@@ -1,0 +1,6 @@
+AllCops:
+  SuggestExtensions: false
+
+Metrics/BlockLength:
+  Exclude:
+    - spec/**/*

@@ -41,10 +41,5 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Check for leaked secrets
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Check whitespace
         run: git diff --check

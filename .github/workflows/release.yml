@@ -1,6 +1,11 @@
 name: Release
 
+# Pushing a v* tag publishes that version. There is no API key anywhere: RubyGems
+# trusted publishing exchanges this workflow's OIDC identity for a short-lived token,
+# so nothing long-lived exists to leak.
 on:
+  push:
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -10,6 +15,10 @@ jobs:
   publish:
     name: Build and publish
     runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v7
@@ -20,20 +29,18 @@ jobs:
           ruby-version: '4.0'
           bundler-cache: true
 
+      # The same gates CI runs, repeated here: a tag must not publish something
+      # that would have failed on a pull request.
       - name: Run specs
         run: bundle exec rake spec
+
+      - name: Replay recorded workflow cassettes
+        env:
+          VCR_RECORD_MODE: none
+        run: bundle exec rspec --tag live
 
       - name: Run RuboCop
         run: bundle exec rubocop
 
-      - name: Build gem
-        run: gem build ruby_llm-team.gemspec
-
-      - name: Publish to RubyGems
-        env:
-          GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_AUTH_TOKEN }}
-        run: |
-          mkdir -p "$HOME/.gem"
-          printf -- "---\n:rubygems_api_key: %s\n" "$GEM_HOST_API_KEY" > "$HOME/.gem/credentials"
-          chmod 0600 "$HOME/.gem/credentials"
-          gem push ruby_llm-team-*.gem
+      - name: Build and publish to RubyGems
+        uses: rubygems/release-gem@v1

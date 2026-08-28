@@ -205,7 +205,8 @@ Reasoning and the evidence behind each refusal: [`docs/DECISIONS.md`](docs/DECIS
 
 ```bash
 bundle install
-bundle exec rake spec
+bundle exec rake spec          # the suite
+bundle exec rake spec:replay   # recorded workflows, no API key needed
 bundle exec rubocop
 ```
 

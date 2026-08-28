@@ -3,22 +3,23 @@
 Status: active, 2026-08-28. What is settled and why lives in [DECISIONS.md](DECISIONS.md);
 superseded roadmap drafts and the ADRs they cite remain in git history.
 
-## Now — get it installable and findable
+## Now — get it found
 
-Adoption is currently impossible: `gem 'ruby_llm-team'` does not resolve. Everything else is
-downstream of that.
+The gem is published and releasing itself. `gem 'ruby_llm-team'` resolves; `0.1.0`, `0.1.1`
+and `0.1.2` are live, and a `v*` tag push publishes through RubyGems trusted publishing with
+no credential in the pipeline. Discovery is the remaining bottleneck: downloads are zero
+because nobody knows it exists.
 
-1. **Publish 0.1.0** as explicitly experimental. The API moved late in development (typed
-   errors, submission-ordered artifact versions, `to_h`/`to_json`, `calls_remaining`), so the
-   release notes must say so rather than imply stability.
-2. **Add Team to [rubyllm.com/ecosystem](https://rubyllm.com/ecosystem/)** by PR. That page
-   already lists Schema, MCP, Tribunal, and Monitoring; it is the highest-qualified traffic a
-   single PR can reach.
-3. **Publish dogfooded posts** produced by `examples/editorial_pipeline.rb`, each shipped with
-   its trace. The trace is simultaneously the proof, the differentiator, and the credibility
-   signal — competitors' tracing requires a cloud login.
+1. **Add Team to [rubyllm.com/ecosystem](https://rubyllm.com/ecosystem/)** by PR. That page
+   already lists Schema, MCP, Tribunal, Monitoring, Test and TopSecret; it is the
+   highest-qualified traffic a single PR can reach, and RubyLLM 2.0 announcements are drawing
+   attention to it right now.
+2. **Publish dogfooded posts** produced by `examples/editorial_pipeline.rb`, each shipped with
+   its trace. Source material and deduped queue rows are already staged in
+   `jetthoughts.github.io` under `docs/projects/2608-ruby-llm-team/` and §14 of the content
+   plan; the S2 row is being drafted on `blog/upgrade-ai-code-review-trust`.
 
-Only then take it to r/ruby or Show HN, and lead with the pipeline rather than the gem.
+Only then take it to r/ruby or Show HN, and lead with a working pipeline rather than the gem.
 
 ## Delivered
 
@@ -33,10 +34,17 @@ Only then take it to r/ruby or Show HN, and lead with the pipeline rather than t
   covering non-`StandardError` crashes and re-entrant delegation.
 - Traces: verbatim-prompt Markdown, plus `to_h`/`to_json` with per-call and run-total
   best-known token usage and content excluded by default.
-- Four worked examples — offline handoff, parallel code review, parallel research, and the
-  seven-pass blog — plus `editorial_pipeline.rb` composing two teams in plain Ruby.
+- Five worked examples — offline handoff, parallel code review, parallel research, the
+  self-orchestrating decision panel, and the seven-pass blog — plus `editorial_pipeline.rb`
+  composing two teams in plain Ruby, where the panel argues the analyst's shortlist instead of
+  betting on its top row.
 - Release hygiene: the package contains only tracked `lib/` files, README, CHANGELOG, LICENSE;
   CI replays recorded cassettes with no API key.
+- Published to RubyGems, and releasing without credentials: a `v*` tag runs the suite, replays
+  cassettes keyless, runs RuboCop, then exchanges the job's OIDC identity for a short-lived
+  token. Verified twice, and the verification caught two defects a passing setup page hid —
+  a non-existent action tag, and `rake release` refusing to run against a tag that already
+  exists.
 
 ## RubyLLM 2.0
 
@@ -58,12 +66,13 @@ None of this is a reason to add API. The two-domain evidence bar still applies.
 
 ## Next evidence
 
-1. **Use the panel where a decision is currently hardcoded.** `examples/editorial_pipeline.rb`
-   takes `recommendations.first` — betting on the top-ranked post without argument. Letting the
-   panel weigh the analyst's candidates would put model-directed delegation inside a real
-   pipeline rather than a standalone demo, and is the natural next test of whether autonomy
-   beats a hardcoded pick.
-2. Compare duplicated mechanics across the examples before proposing any Team API. Known
+1. **Does the panel actually beat the ranking?** It now chooses which post to write, but the
+   one live run confirmed the analyst's top row rather than overturning it. Autonomy that only
+   agrees is cost without benefit — watch several runs before claiming it earns its calls.
+2. **A session inside a background job**, with artifacts persisted by the caller. It is the
+   missing evidence for the substrate claim, and RubyLLM 2.0's one-move-per-job pattern is the
+   shape to copy.
+3. Compare duplicated mechanics across the examples before proposing any Team API. Known
    candidate: nothing yet — the runner and research plumbing already moved to
    `examples/support/`, and the remaining duplication is domain policy.
 

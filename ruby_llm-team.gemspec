@@ -36,5 +36,7 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ['lib']
 
-  spec.add_dependency 'ruby_llm', '>= 1.16.0'
+  # Upper bound is deliberate. RubyLLM 2.0 removes `halt` and decomposes the agentic loop;
+  # this gem has never run against it. Widen only after the suite passes on 2.x.
+  spec.add_dependency 'ruby_llm', '>= 1.16.0', '< 2.0'
 end

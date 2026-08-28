@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+- Pin `ruby_llm` to `< 2.0`. RubyLLM 2.0 removes `halt` and decomposes the agentic loop into
+  `ask_later`/`generate`/`run_tools`/`step`; this gem has never run against it, and an
+  unbounded constraint would have resolved new installs onto an untested major the day it
+  publishes. The bound widens once the suite passes on 2.x.
+
 ## 0.1.1
 
 First release published by GitHub Actions through RubyGems trusted publishing — no API key

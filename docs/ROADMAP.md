@@ -38,6 +38,24 @@ Only then take it to r/ruby or Show HN, and lead with the pipeline rather than t
 - Release hygiene: the package contains only tracked `lib/` files, README, CHANGELOG, LICENSE;
   CI replays recorded cassettes with no API key.
 
+## RubyLLM 2.0
+
+[The agentic loop is exposed](https://paolino.me/rubyllm-2-0-agentic-loop/) as `ask_later`,
+`generate`, `run_tools`, `step` and `complete?`, `halt` is removed, and `chat.cancel!` works
+across threads. Not yet on RubyGems; the dependency is pinned `< 2.0` until the suite runs
+against it.
+
+It operates inside one chat's tool loop, where Team coordinates across agents, so the two
+compose rather than overlap. It also answers three things this project recorded as weaknesses:
+
+1. **Budget bounds hops, not spend.** Counting `step`/`generate` within a hop becomes possible,
+   so the gap in [bounded by default](../.okf/decisions/bounded-by-default.md) is addressable.
+2. **Cancellation and deadlines**, deferred as non-goals, now have an upstream primitive.
+3. **"Usable inside a Rails engine" is a claim, not evidence.** The one-move-per-job pattern is
+   the background-job example this repository lacks — the strongest candidate for closing it.
+
+None of this is a reason to add API. The two-domain evidence bar still applies.
+
 ## Next evidence
 
 1. **Use the panel where a decision is currently hardcoded.** `examples/editorial_pipeline.rb`

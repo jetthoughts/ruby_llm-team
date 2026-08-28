@@ -39,5 +39,16 @@ jobs:
       - name: Run RuboCop
         run: bundle exec rubocop
 
-      - name: Build and publish to RubyGems
-        uses: rubygems/release-gem@v1
+      # Exchanges this job's OIDC identity for a short-lived RubyGems token. Requires a
+      # trusted publisher registered for this repository and workflow filename.
+      - name: Configure trusted publishing credentials
+        uses: rubygems/configure-rubygems-credentials@v1
+
+      # Deliberately not rubygems/release-gem: that runs `rake release`, which tags the
+      # version itself and refuses to run when the tag already exists — and the tag is what
+      # triggered this workflow.
+      - name: Build gem
+        run: gem build ruby_llm-team.gemspec
+
+      - name: Publish to RubyGems
+        run: gem push ruby_llm-team-*.gem

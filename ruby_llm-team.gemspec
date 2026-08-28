@@ -18,11 +18,19 @@ Gem::Specification.new do |spec|
 
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = spec.homepage
-  spec.metadata['changelog_uri'] = "#{spec.homepage}/releases"
+  spec.metadata['changelog_uri'] = "#{spec.homepage}/blob/master/CHANGELOG.md"
   spec.metadata['rubygems_mfa_required'] = 'true'
 
+  # Ship only tracked library files; examples, docs, traces, and any local scratch
+  # files under lib/ stay out of the package.
   spec.files = Dir.chdir(__dir__) do
-    `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
+    tracked = `git ls-files -z`.split("\x0")
+    files = tracked.grep(%r{^lib/.*\.rb$}) + (tracked & %w[README.md CHANGELOG.md LICENSE.txt])
+    # Outside a git checkout `git ls-files` returns nothing and this would build an empty,
+    # unloadable gem. A published version number can never be replaced, so fail loudly.
+    raise 'gem must be built from a git checkout; `git ls-files` returned no files' if files.empty?
+
+    files
   end
   spec.bindir        = 'exe'
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }

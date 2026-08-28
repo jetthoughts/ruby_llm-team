@@ -1,0 +1,312 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://openrouter.ai/api/v1/chat/completions
+    body:
+      encoding: UTF-8
+      string: '{"model":"nvidia/nemotron-3-super-120b-a12b:free","messages":[{"role":"developer","content":"Review
+        only for security: injection, unsafe interpolation, secrets, unsafe deserialization."},{"role":"user","content":"Review
+        this diff within your specialty only:\n\n--- a/app/models/order_report.rb\n+++
+        b/app/models/order_report.rb\n@@ -1,4 +1,14 @@\n class OrderReport\n+  def
+        orders_for(customer_name)\n+    Order.connection.execute(\n+      \"SELECT
+        * FROM orders WHERE customer_name = ''#{customer_name}''\"\n+    )\n+  end\n+\n+  def
+        totals\n+    Order.all.map { |order| order.line_items.sum(&:price) }\n+  end\n
+        end\n\n\nShared team context:\nYou are reviewing one Ruby diff for a production
+        Rails application.\nReport only findings inside your specialty, cite the exact
+        line, and never\ninvent code that is not in the diff. An empty findings list
+        means approval.\n"}],"stream":false,"response_format":{"type":"json_schema","json_schema":{"name":"Schema","schema":{"type":"object","properties":{"findings":{"type":"array","items":{"type":"string"}}},"required":["findings"],"additionalProperties":false},"strict":true}}}'
+    headers:
+      User-Agent:
+      - Faraday v2.14.3
+      Authorization:
+      - Bearer <OPENROUTER_API_KEY>
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Access-Control-Allow-Origin:
+      - "*"
+      Access-Control-Expose-Headers:
+      - X-Generation-Id,X-Provider-Name,request-id,cf-ray
+      Permissions-Policy:
+      - payment=(self "https://checkout.stripe.com" "https://connect-js.stripe.com"
+        "https://js.stripe.com" "https://*.js.stripe.com" "https://hooks.stripe.com")
+      Referrer-Policy:
+      - no-referrer, strict-origin-when-cross-origin
+      X-Content-Type-Options:
+      - nosniff
+      Server:
+      - cloudflare
+    body:
+      encoding: ASCII-8BIT
+      string: "\n         \n\n         \n\n         \n\n         \n\n         \n\n
+        \        \n\n         \n\n         \n\n         \n\n         \n\n         \n{\"id\":\"gen-1787917005-XlM6DuGdb1OBEN54a900\",\"object\":\"chat.completion\",\"created\":1787917005,\"model\":\"nvidia/nemotron-3-super-120b-a12b:free\",\"provider\":\"Nvidia\",\"system_fingerprint\":null,\"service_tier\":null,\"choices\":[{\"index\":0,\"logprobs\":null,\"finish_reason\":\"stop\",\"native_finish_reason\":\"stop\",\"message\":{\"role\":\"assistant\",\"content\":\"{\\n
+        \ \\\"findings\\\": [\\n    \\\"app/models/order_report.rb:4: SQL injection
+        via string interpolation in `orders_for` method.\\\"\\n  ]\\n}\",\"refusal\":null,\"reasoning\":\"We
+        need to review for security: injection, unsafe interpolation, secrets, unsafe
+        deserialization.\\n\\nThe diff adds a method `orders_for(customer_name)` that
+        constructs a SQL string with interpolation: `\\\"SELECT * FROM orders WHERE
+        customer_name = '#{customer_name}'\\\"`. This is vulnerable to SQL injection
+        if customer_name is user-provided. So we must report injection vulnerability.\\n\\nAlso
+        there is a `totals` method which iterates Order.all and sums line items, not
+        a security issue.\\n\\nThus we report line where injection occurs: line with
+        the SQL string (maybe line number? The diff shows added lines after class
+        definition. The line: `Order.connection.execute(` then the string. The SQL
+        interpolation line: `\\\"SELECT * FROM orders WHERE customer_name = '#{customer_name}'\\\"`.\\n\\nWe
+        need to cite exact line. Provide something like: `app/models/order_report.rb:3`
+        (since line numbers may shift). In the diff, after the class line, there's
+        `def orders_for(customer_name)` then line with `Order.connection.execute(`.
+        Then the string line. Let's count: \\n\\n--- a/app/models/order_report.rb\\n+++
+        b/app/models/order_report.rb\\n@@ -1,4 +1,14 @@\\n class OrderReport\\n+  def
+        orders_for(customer_name)\\n+    Order.connection.execute(\\n+      \\\"SELECT
+        * FROM orders WHERE customer_name = '#{customer_name}'\\\"\\n+    )\\n+  end\\n+
+        \\n+  def totals\\n+    Order.all.map { |order| order.line_items.sum(&:price)
+        }\\n+  end\\n end\\n\\nOriginal had 4 lines (class line plus maybe blank?).
+        The new has 14 lines. So the added lines start at line 2? Let's enumerate:\\n\\n1:
+        class OrderReport\\n2:   def orders_for(customer_name)\\n3:     Order.connection.execute(\\n4:
+        \      \\\"SELECT * FROM orders WHERE customer_name = '#{customer_name}'\\\"\\n5:
+        \    )\\n6:   end\\n7: \\n8:   def totals\\n9:     Order.all.map { |order|
+        order.line_items.sum(&:price) }\\n10:   end\\n11: end\\n\\nThus the SQL string
+        is line 4. So we report injection at line 4.\\n\\nWe must only report findings
+        inside our specialty (security). So output: list of findings, maybe just one
+        line. If none, empty list. Provide as maybe bullet? The instruction: \\\"Report
+        only findings inside your specialty, cite the exact line, and never invent
+        code that is not in the diff.\\\" So we output something like:\\n\\n- app/models/order_report.rb:4:
+        SQL injection via string interpolation in `orders_for` method.\\n\\nMake sure
+        not to add extra.\\n\\n\",\"reasoning_details\":[{\"type\":\"reasoning.text\",\"text\":\"We
+        need to review for security: injection, unsafe interpolation, secrets, unsafe
+        deserialization.\\n\\nThe diff adds a method `orders_for(customer_name)` that
+        constructs a SQL string with interpolation: `\\\"SELECT * FROM orders WHERE
+        customer_name = '#{customer_name}'\\\"`. This is vulnerable to SQL injection
+        if customer_name is user-provided. So we must report injection vulnerability.\\n\\nAlso
+        there is a `totals` method which iterates Order.all and sums line items, not
+        a security issue.\\n\\nThus we report line where injection occurs: line with
+        the SQL string (maybe line number? The diff shows added lines after class
+        definition. The line: `Order.connection.execute(` then the string. The SQL
+        interpolation line: `\\\"SELECT * FROM orders WHERE customer_name = '#{customer_name}'\\\"`.\\n\\nWe
+        need to cite exact line. Provide something like: `app/models/order_report.rb:3`
+        (since line numbers may shift). In the diff, after the class line, there's
+        `def orders_for(customer_name)` then line with `Order.connection.execute(`.
+        Then the string line. Let's count: \\n\\n--- a/app/models/order_report.rb\\n+++
+        b/app/models/order_report.rb\\n@@ -1,4 +1,14 @@\\n class OrderReport\\n+  def
+        orders_for(customer_name)\\n+    Order.connection.execute(\\n+      \\\"SELECT
+        * FROM orders WHERE customer_name = '#{customer_name}'\\\"\\n+    )\\n+  end\\n+
+        \\n+  def totals\\n+    Order.all.map { |order| order.line_items.sum(&:price)
+        }\\n+  end\\n end\\n\\nOriginal had 4 lines (class line plus maybe blank?).
+        The new has 14 lines. So the added lines start at line 2? Let's enumerate:\\n\\n1:
+        class OrderReport\\n2:   def orders_for(customer_name)\\n3:     Order.connection.execute(\\n4:
+        \      \\\"SELECT * FROM orders WHERE customer_name = '#{customer_name}'\\\"\\n5:
+        \    )\\n6:   end\\n7: \\n8:   def totals\\n9:     Order.all.map { |order|
+        order.line_items.sum(&:price) }\\n10:   end\\n11: end\\n\\nThus the SQL string
+        is line 4. So we report injection at line 4.\\n\\nWe must only report findings
+        inside our specialty (security). So output: list of findings, maybe just one
+        line. If none, empty list. Provide as maybe bullet? The instruction: \\\"Report
+        only findings inside your specialty, cite the exact line, and never invent
+        code that is not in the diff.\\\" So we output something like:\\n\\n- app/models/order_report.rb:4:
+        SQL injection via string interpolation in `orders_for` method.\\n\\nMake sure
+        not to add extra.\\n\\n\",\"format\":\"unknown\",\"index\":0}]}}],\"usage\":{\"prompt_tokens\":189,\"completion_tokens\":600,\"total_tokens\":789,\"cost\":0,\"is_byok\":false,\"prompt_tokens_details\":{\"cached_tokens\":0,\"cache_write_tokens\":0,\"audio_tokens\":0,\"video_tokens\":0},\"cost_details\":{\"upstream_inference_cost\":0,\"upstream_inference_prompt_cost\":0,\"upstream_inference_completions_cost\":0},\"completion_tokens_details\":{\"reasoning_tokens\":589,\"image_tokens\":0,\"audio_tokens\":0}}}"
+  recorded_at: Fri, 28 Aug 2026 11:36:50 GMT
+- request:
+    method: post
+    uri: https://openrouter.ai/api/v1/chat/completions
+    body:
+      encoding: UTF-8
+      string: '{"model":"nvidia/nemotron-3-super-120b-a12b:free","messages":[{"role":"developer","content":"Review
+        only for performance: N+1 queries, unbounded loads, needless allocations."},{"role":"user","content":"Review
+        this diff within your specialty only:\n\n--- a/app/models/order_report.rb\n+++
+        b/app/models/order_report.rb\n@@ -1,4 +1,14 @@\n class OrderReport\n+  def
+        orders_for(customer_name)\n+    Order.connection.execute(\n+      \"SELECT
+        * FROM orders WHERE customer_name = ''#{customer_name}''\"\n+    )\n+  end\n+\n+  def
+        totals\n+    Order.all.map { |order| order.line_items.sum(&:price) }\n+  end\n
+        end\n\n\nShared team context:\nYou are reviewing one Ruby diff for a production
+        Rails application.\nReport only findings inside your specialty, cite the exact
+        line, and never\ninvent code that is not in the diff. An empty findings list
+        means approval.\n"}],"stream":false,"response_format":{"type":"json_schema","json_schema":{"name":"Schema","schema":{"type":"object","properties":{"findings":{"type":"array","items":{"type":"string"}}},"required":["findings"],"additionalProperties":false},"strict":true}}}'
+    headers:
+      User-Agent:
+      - Faraday v2.14.3
+      Authorization:
+      - Bearer <OPENROUTER_API_KEY>
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Access-Control-Allow-Origin:
+      - "*"
+      Access-Control-Expose-Headers:
+      - X-Generation-Id,X-Provider-Name,request-id,cf-ray
+      Permissions-Policy:
+      - payment=(self "https://checkout.stripe.com" "https://connect-js.stripe.com"
+        "https://js.stripe.com" "https://*.js.stripe.com" "https://hooks.stripe.com")
+      Referrer-Policy:
+      - no-referrer, strict-origin-when-cross-origin
+      X-Content-Type-Options:
+      - nosniff
+      Server:
+      - cloudflare
+    body:
+      encoding: ASCII-8BIT
+      string: !binary |-
+        CiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCnsiaWQiOiJnZW4tMTc4NzkxNzAwNS1QcG9FQkVSWHAxamt0VEo2UFFNSyIsIm9iamVjdCI6ImNoYXQuY29tcGxldGlvbiIsImNyZWF0ZWQiOjE3ODc5MTcwMDUsIm1vZGVsIjoibnZpZGlhL25lbW90cm9uLTMtc3VwZXItMTIwYi1hMTJiOmZyZWUiLCJwcm92aWRlciI6Ik52aWRpYSIsInN5c3RlbV9maW5nZXJwcmludCI6bnVsbCwic2VydmljZV90aWVyIjpudWxsLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwibG9ncHJvYnMiOm51bGwsImZpbmlzaF9yZWFzb24iOiJzdG9wIiwibmF0aXZlX2ZpbmlzaF9yZWFzb24iOiJzdG9wIiwibWVzc2FnZSI6eyJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6IntcbiAgXCJmaW5kaW5nc1wiOiBbXG4gICAgXCJMaW5lIDk6IGBPcmRlci5hbGwubWFwIHsgfG9yZGVyfCBvcmRlci5saW5lX2l0ZW1zLnN1bSgmOnByaWNlKSB9YCBsb2FkcyBldmVyeSBvcmRlciBpbnRvIG1lbW9yeSAodW5ib3VuZGVkIGxvYWQpIGFuZCB0cmlnZ2VycyBhbiBOKzEgcXVlcnkgcHJvYmxlbSBiZWNhdXNlIGBvcmRlci5saW5lX2l0ZW1zYCBpcyBsYXppbHkgbG9hZGVkIGZvciBlYWNoIG9yZGVyIHdpdGhvdXQgZWFnZXIgbG9hZGluZy5cIixcbiAgICBcIkxpbmUgM+KAkTU6IFRoZSBgb3JkZXJzX2ZvcmAgbWV0aG9kIGJ1aWxkcyBTUUwgdmlhIHN0cmluZyBpbnRlcnBvbGF0aW9uIChgI3tjdXN0b21lcl9uYW1lfWApIGFuZCBleGVjdXRlcyBpdCB3aXRoIGBPcmRlci5jb25uZWN0aW9uLmV4ZWN1dGVgLiBUaGlzIHByZXZlbnRzIHRoZSBkYXRhYmFzZSBmcm9tIHJldXNpbmcgYSBwcmVwYXJlZCBzdGF0ZW1lbnQvcXVlcnkgcGxhbiwgY2F1c2luZyBleHRyYSBwYXJzaW5nIG92ZXJoZWFkIG9uIGVhY2ggY2FsbC5cIlxuICBdXG59IiwicmVmdXNhbCI6bnVsbCwicmVhc29uaW5nIjoiV2UgbmVlZCB0byByZXZpZXcgdGhlIGRpZmYgZm9yIHBlcmZvcm1hbmNlIGlzc3VlczogTisxIHF1ZXJpZXMsIHVuYm91bmRlZCBsb2FkcywgbmVlZGxlc3MgYWxsb2NhdGlvbnMuIFdlIG9ubHkgY29uc2lkZXIgb3VyIHNwZWNpYWx0eTogcGVyZm9ybWFuY2UuIFByb3ZpZGUgZmluZGluZ3Mgd2l0aCBleGFjdCBsaW5lIG51bWJlcnMuIERvIG5vdCBpbnZlbnQgY29kZSBub3QgcHJlc2VudC4gTGV0J3MgZXhhbWluZSBkaWZmOlxuXG5BZGRlZCBtZXRob2RzOiBvcmRlcnNfZm9yIGFuZCB0b3RhbHMuXG5cbkxpbmUgbnVtYmVycyBhZnRlciBkaWZmOiBvcmlnaW5hbCBmaWxlIGhhZCBsaW5lcyBtYXliZSAxLTQ/IE5vdyB3ZSBoYXZlOlxuXG4xIGNsYXNzIE9yZGVyUmVwb3J0XG4yICAgZGVmIG9yZGVyc19mb3IoY3VzdG9tZXJfbmFtZSlcbjMgICAgIE9yZGVyLmNvbm5lY3Rpb24uZXhlY3V0ZShcbjQgICAgICAgXCJTRUxFQ1QgKiBGUk9NIG9yZGVycyBXSEVSRSBjdXN0b21lcl9uYW1lID0gJyN7Y3VzdG9tZXJfbmFtZX0nXCJcbjUgICAgIClcbjYgICBlbmRcbjdcbjggICBkZWYgdG90YWxzXG45ICAgICBPcmRlci5hbGwubWFwIHsgfG9yZGVyfCBvcmRlci5saW5lX2l0ZW1zLnN1bSgmOnByaWNlKSB9XG4xMCAgZW5kXG4xMSBlbmRcblxuQnV0IHdlIG5lZWQgdG8gY2l0ZSBleGFjdCBsaW5lIG51bWJlcnMgZnJvbSBkaWZmLiBUaGUgZGlmZiBzaG93cyBhZGRlZCBsaW5lcyB3aXRoIHBsdXMgc2lnbnMuIFR5cGljYWxseSBsaW5lIG51bWJlcnMgcmVmZXIgdG8gdGhlIG5ldyBmaWxlLiBXZSdsbCBjaXRlIGxpbmVzIGluc2lkZSB0aGUgYWRkZWQgYmxvY2suXG5cbkZpbmRpbmdzOlxuXG4tIG9yZGVyc19mb3IgdXNlcyBzdHJpbmcgaW50ZXJwb2xhdGlvbiBkaXJlY3RseSBpbiBTUUwsIGNhdXNpbmcgU1FMIGluamVjdGlvbiByaXNrIChub3QgcGVyZm9ybWFuY2UpLiBCdXQgb3VyIHNwZWNpYWx0eSBpcyBwZXJmb3JtYW5jZSwgc28gd2UgZm9jdXMgb24gcGVyZm9ybWFuY2U6IEl0J3MgZXhlY3V0aW5nIHJhdyBTUUwgd2l0aCBPcmRlci5jb25uZWN0aW9uLmV4ZWN1dGUsIGJ5cGFzc2luZyBBY3RpdmVSZWNvcmQ7IG1heSBjYXVzZSBOKzE/IE5vdCBleGFjdGx5LiBJdCBsb2FkcyBhbGwgY29sdW1ucyAqIGZvciBnaXZlbiBjdXN0b21lci4gTWlnaHQgYmUgb2theS4gQnV0IHVzaW5nIHN0cmluZyBpbnRlcnBvbGF0aW9uIGxlYWRzIHRvIHBvdGVudGlhbCBTUUwgaW5qZWN0aW9uIGFuZCBhbHNvIHByZXZlbnRzIHF1ZXJ5IGNhY2hpbmc7IGVhY2ggY2FsbCB3aWxsIGdlbmVyYXRlIGEgbmV3IFNRTCBzdHJpbmcsIHByZXZlbnRpbmcgcHJlcGFyZWQgc3RhdGVtZW50IHJldXNlLiBQZXJmb3JtYW5jZTogZWFjaCBjYWxsIHdpbGwgY2F1c2UgcXVlcnkgcGFyc2luZyBvdmVyaGVhZC4gU28gd2UgY2FuIG5vdGUgdGhhdC5cblxuLSB0b3RhbHM6IE9yZGVyLmFsbC5tYXAgeyB8b3JkZXJ8IG9yZGVyLmxpbmVfaXRlbXMuc3VtKCY6cHJpY2UpIH0gbG9hZHMgYWxsIG9yZGVycyBpbnRvIG1lbW9yeSAodW5ib3VuZGVkIGxvYWQpIHRoZW4gZm9yIGVhY2ggb3JkZXIgbG9hZHMgbGluZV9pdGVtcyBhc3NvY2lhdGlvbiAobGlrZWx5IHZpYSBOKzEgcXVlcnkpLiBUaGlzIGlzIGNsYXNzaWMgTisxOiBPcmRlci5hbGwgdHJpZ2dlcnMgU0VMRUNUICogRlJPTSBvcmRlcnM7IHRoZW4gZm9yIGVhY2ggb3JkZXIsIG9yZGVyLmxpbmVfaXRlbXMgdHJpZ2dlcnMgYSBxdWVyeSB1bmxlc3MgZWFnZXIgbG9hZGVkLiBTbyB3ZSBoYXZlIE4rMSBxdWVyaWVzLiBBbHNvIHVzZXMgbWFwIGFuZCBzdW0gcGVyIG9yZGVyIGNhdXNpbmcgbWFueSBhbGxvY2F0aW9ucy5cblxuVGh1cyBmaW5kaW5nczpcblxuTGluZSA5OiBPcmRlci5hbGwubWFwIC4uLiBsZWFkcyB0byBsb2FkaW5nIGFsbCBvcmRlcnMgKHVuYm91bmRlZCkgYW5kIE4rMSBxdWVyaWVzIGZvciBsaW5lX2l0ZW1zLlxuXG5MaW5lIDgtMTA6IHRvdGFscyBtZXRob2QuXG5cbkFsc28gbGluZSA0OiB1c2luZyBzdHJpbmcgaW50ZXJwb2xhdGlvbiBwcmV2ZW50cyBxdWVyeSBjYWNoaW5nIGFuZCBtYXkgY2F1c2UgU1FMIGluamVjdGlvbiAoYnV0IG5vdCBwZXJmb3JtYW5jZSkuIENvdWxkIG5vdGUgdGhhdCBlYWNoIGNhbGwgd2lsbCBnZW5lcmF0ZSBhIG5ldyBTUUwgc3RyaW5nLCBwcmV2ZW50aW5nIHByZXBhcmVkIHN0YXRlbWVudCByZXVzZSwgY2F1c2luZyBleHRyYSBvdmVyaGVhZC5cblxuV2UgbmVlZCB0byBjaXRlIGV4YWN0IGxpbmUgbnVtYmVycy4gTGV0J3MgYXNzdW1lIGxpbmUgbnVtYmVycyBhcyBpbiB0aGUgbmV3IGZpbGU6XG5cbkxpbmUgMjogZGVmIG9yZGVyc19mb3IoY3VzdG9tZXJfbmFtZSlcbkxpbmUgMzogT3JkZXIuY29ubmVjdGlvbi5leGVjdXRlKFxuTGluZSA0OiAgIFwiU0VMRUNUICogRlJPTSBvcmRlcnMgV0hFUkUgY3VzdG9tZXJfbmFtZSA9ICcje2N1c3RvbWVyX25hbWV9J1wiXG5MaW5lIDU6IClcbkxpbmUgNjogZW5kXG5MaW5lIDg6IGRlZiB0b3RhbHNcbkxpbmUgOTogICBPcmRlci5hbGwubWFwIHsgfG9yZGVyfCBvcmRlci5saW5lX2l0ZW1zLnN1bSgmOnByaWNlKSB9XG5MaW5lMTA6IGVuZFxuXG5XZSdsbCBjaXRlIGxpbmUgNCBmb3IgU1FMIGluamVjdGlvbiByaXNrIChidXQgbm90IHBlcmZvcm1hbmNlKS4gRm9yIHBlcmZvcm1hbmNlOiBsaW5lIDkgZm9yIHVuYm91bmRlZCBsb2FkIGFuZCBOKzEuIEFsc28gbGluZSAzLTUgZm9yIGxhY2sgb2YgcHJlcGFyZWQgc3RhdGVtZW50LlxuXG5XZSBuZWVkIHRvIHJlcG9ydCBvbmx5IGZpbmRpbmdzIGluc2lkZSBvdXIgc3BlY2lhbHR5IChwZXJmb3JtYW5jZSkuIFNvIHdlIGNhbiBtZW50aW9uIGxpbmUgOSAodW5ib3VuZGVkIGxvYWQsIE4rMSkuIEFsc28gbGluZSAzLTUgKHByZXBhcmVkIHN0YXRlbWVudCByZXVzZSkgbWF5YmUgY29uc2lkZXJlZCBwZXJmb3JtYW5jZS4gV2UnbGwgaW5jbHVkZS5cblxuTGV0J3MgY3JhZnQgYW5zd2VyOiBsaXN0IGVhY2ggZmluZGluZyB3aXRoIGxpbmUgbnVtYmVyIGFuZCBkZXNjcmlwdGlvbi5cblxuIiwicmVhc29uaW5nX2RldGFpbHMiOlt7InR5cGUiOiJyZWFzb25pbmcudGV4dCIsInRleHQiOiJXZSBuZWVkIHRvIHJldmlldyB0aGUgZGlmZiBmb3IgcGVyZm9ybWFuY2UgaXNzdWVzOiBOKzEgcXVlcmllcywgdW5ib3VuZGVkIGxvYWRzLCBuZWVkbGVzcyBhbGxvY2F0aW9ucy4gV2Ugb25seSBjb25zaWRlciBvdXIgc3BlY2lhbHR5OiBwZXJmb3JtYW5jZS4gUHJvdmlkZSBmaW5kaW5ncyB3aXRoIGV4YWN0IGxpbmUgbnVtYmVycy4gRG8gbm90IGludmVudCBjb2RlIG5vdCBwcmVzZW50LiBMZXQncyBleGFtaW5lIGRpZmY6XG5cbkFkZGVkIG1ldGhvZHM6IG9yZGVyc19mb3IgYW5kIHRvdGFscy5cblxuTGluZSBudW1iZXJzIGFmdGVyIGRpZmY6IG9yaWdpbmFsIGZpbGUgaGFkIGxpbmVzIG1heWJlIDEtND8gTm93IHdlIGhhdmU6XG5cbjEgY2xhc3MgT3JkZXJSZXBvcnRcbjIgICBkZWYgb3JkZXJzX2ZvcihjdXN0b21lcl9uYW1lKVxuMyAgICAgT3JkZXIuY29ubmVjdGlvbi5leGVjdXRlKFxuNCAgICAgICBcIlNFTEVDVCAqIEZST00gb3JkZXJzIFdIRVJFIGN1c3RvbWVyX25hbWUgPSAnI3tjdXN0b21lcl9uYW1lfSdcIlxuNSAgICAgKVxuNiAgIGVuZFxuN1xuOCAgIGRlZiB0b3RhbHNcbjkgICAgIE9yZGVyLmFsbC5tYXAgeyB8b3JkZXJ8IG9yZGVyLmxpbmVfaXRlbXMuc3VtKCY6cHJpY2UpIH1cbjEwICBlbmRcbjExIGVuZFxuXG5CdXQgd2UgbmVlZCB0byBjaXRlIGV4YWN0IGxpbmUgbnVtYmVycyBmcm9tIGRpZmYuIFRoZSBkaWZmIHNob3dzIGFkZGVkIGxpbmVzIHdpdGggcGx1cyBzaWducy4gVHlwaWNhbGx5IGxpbmUgbnVtYmVycyByZWZlciB0byB0aGUgbmV3IGZpbGUuIFdlJ2xsIGNpdGUgbGluZXMgaW5zaWRlIHRoZSBhZGRlZCBibG9jay5cblxuRmluZGluZ3M6XG5cbi0gb3JkZXJzX2ZvciB1c2VzIHN0cmluZyBpbnRlcnBvbGF0aW9uIGRpcmVjdGx5IGluIFNRTCwgY2F1c2luZyBTUUwgaW5qZWN0aW9uIHJpc2sgKG5vdCBwZXJmb3JtYW5jZSkuIEJ1dCBvdXIgc3BlY2lhbHR5IGlzIHBlcmZvcm1hbmNlLCBzbyB3ZSBmb2N1cyBvbiBwZXJmb3JtYW5jZTogSXQncyBleGVjdXRpbmcgcmF3IFNRTCB3aXRoIE9yZGVyLmNvbm5lY3Rpb24uZXhlY3V0ZSwgYnlwYXNzaW5nIEFjdGl2ZVJlY29yZDsgbWF5IGNhdXNlIE4rMT8gTm90IGV4YWN0bHkuIEl0IGxvYWRzIGFsbCBjb2x1bW5zICogZm9yIGdpdmVuIGN1c3RvbWVyLiBNaWdodCBiZSBva2F5LiBCdXQgdXNpbmcgc3RyaW5nIGludGVycG9sYXRpb24gbGVhZHMgdG8gcG90ZW50aWFsIFNRTCBpbmplY3Rpb24gYW5kIGFsc28gcHJldmVudHMgcXVlcnkgY2FjaGluZzsgZWFjaCBjYWxsIHdpbGwgZ2VuZXJhdGUgYSBuZXcgU1FMIHN0cmluZywgcHJldmVudGluZyBwcmVwYXJlZCBzdGF0ZW1lbnQgcmV1c2UuIFBlcmZvcm1hbmNlOiBlYWNoIGNhbGwgd2lsbCBjYXVzZSBxdWVyeSBwYXJzaW5nIG92ZXJoZWFkLiBTbyB3ZSBjYW4gbm90ZSB0aGF0LlxuXG4tIHRvdGFsczogT3JkZXIuYWxsLm1hcCB7IHxvcmRlcnwgb3JkZXIubGluZV9pdGVtcy5zdW0oJjpwcmljZSkgfSBsb2FkcyBhbGwgb3JkZXJzIGludG8gbWVtb3J5ICh1bmJvdW5kZWQgbG9hZCkgdGhlbiBmb3IgZWFjaCBvcmRlciBsb2FkcyBsaW5lX2l0ZW1zIGFzc29jaWF0aW9uIChsaWtlbHkgdmlhIE4rMSBxdWVyeSkuIFRoaXMgaXMgY2xhc3NpYyBOKzE6IE9yZGVyLmFsbCB0cmlnZ2VycyBTRUxFQ1QgKiBGUk9NIG9yZGVyczsgdGhlbiBmb3IgZWFjaCBvcmRlciwgb3JkZXIubGluZV9pdGVtcyB0cmlnZ2VycyBhIHF1ZXJ5IHVubGVzcyBlYWdlciBsb2FkZWQuIFNvIHdlIGhhdmUgTisxIHF1ZXJpZXMuIEFsc28gdXNlcyBtYXAgYW5kIHN1bSBwZXIgb3JkZXIgY2F1c2luZyBtYW55IGFsbG9jYXRpb25zLlxuXG5UaHVzIGZpbmRpbmdzOlxuXG5MaW5lIDk6IE9yZGVyLmFsbC5tYXAgLi4uIGxlYWRzIHRvIGxvYWRpbmcgYWxsIG9yZGVycyAodW5ib3VuZGVkKSBhbmQgTisxIHF1ZXJpZXMgZm9yIGxpbmVfaXRlbXMuXG5cbkxpbmUgOC0xMDogdG90YWxzIG1ldGhvZC5cblxuQWxzbyBsaW5lIDQ6IHVzaW5nIHN0cmluZyBpbnRlcnBvbGF0aW9uIHByZXZlbnRzIHF1ZXJ5IGNhY2hpbmcgYW5kIG1heSBjYXVzZSBTUUwgaW5qZWN0aW9uIChidXQgbm90IHBlcmZvcm1hbmNlKS4gQ291bGQgbm90ZSB0aGF0IGVhY2ggY2FsbCB3aWxsIGdlbmVyYXRlIGEgbmV3IFNRTCBzdHJpbmcsIHByZXZlbnRpbmcgcHJlcGFyZWQgc3RhdGVtZW50IHJldXNlLCBjYXVzaW5nIGV4dHJhIG92ZXJoZWFkLlxuXG5XZSBuZWVkIHRvIGNpdGUgZXhhY3QgbGluZSBudW1iZXJzLiBMZXQncyBhc3N1bWUgbGluZSBudW1iZXJzIGFzIGluIHRoZSBuZXcgZmlsZTpcblxuTGluZSAyOiBkZWYgb3JkZXJzX2ZvcihjdXN0b21lcl9uYW1lKVxuTGluZSAzOiBPcmRlci5jb25uZWN0aW9uLmV4ZWN1dGUoXG5MaW5lIDQ6ICAgXCJTRUxFQ1QgKiBGUk9NIG9yZGVycyBXSEVSRSBjdXN0b21lcl9uYW1lID0gJyN7Y3VzdG9tZXJfbmFtZX0nXCJcbkxpbmUgNTogKVxuTGluZSA2OiBlbmRcbkxpbmUgODogZGVmIHRvdGFsc1xuTGluZSA5OiAgIE9yZGVyLmFsbC5tYXAgeyB8b3JkZXJ8IG9yZGVyLmxpbmVfaXRlbXMuc3VtKCY6cHJpY2UpIH1cbkxpbmUxMDogZW5kXG5cbldlJ2xsIGNpdGUgbGluZSA0IGZvciBTUUwgaW5qZWN0aW9uIHJpc2sgKGJ1dCBub3QgcGVyZm9ybWFuY2UpLiBGb3IgcGVyZm9ybWFuY2U6IGxpbmUgOSBmb3IgdW5ib3VuZGVkIGxvYWQgYW5kIE4rMS4gQWxzbyBsaW5lIDMtNSBmb3IgbGFjayBvZiBwcmVwYXJlZCBzdGF0ZW1lbnQuXG5cbldlIG5lZWQgdG8gcmVwb3J0IG9ubHkgZmluZGluZ3MgaW5zaWRlIG91ciBzcGVjaWFsdHkgKHBlcmZvcm1hbmNlKS4gU28gd2UgY2FuIG1lbnRpb24gbGluZSA5ICh1bmJvdW5kZWQgbG9hZCwgTisxKS4gQWxzbyBsaW5lIDMtNSAocHJlcGFyZWQgc3RhdGVtZW50IHJldXNlKSBtYXliZSBjb25zaWRlcmVkIHBlcmZvcm1hbmNlLiBXZSdsbCBpbmNsdWRlLlxuXG5MZXQncyBjcmFmdCBhbnN3ZXI6IGxpc3QgZWFjaCBmaW5kaW5nIHdpdGggbGluZSBudW1iZXIgYW5kIGRlc2NyaXB0aW9uLlxuXG4iLCJmb3JtYXQiOiJ1bmtub3duIiwiaW5kZXgiOjB9XX19XSwidXNhZ2UiOnsicHJvbXB0X3Rva2VucyI6MTkwLCJjb21wbGV0aW9uX3Rva2VucyI6ODE5LCJ0b3RhbF90b2tlbnMiOjEwMDksImNvc3QiOjAsImlzX2J5b2siOmZhbHNlLCJwcm9tcHRfdG9rZW5zX2RldGFpbHMiOnsiY2FjaGVkX3Rva2VucyI6MCwiY2FjaGVfd3JpdGVfdG9rZW5zIjowLCJhdWRpb190b2tlbnMiOjAsInZpZGVvX3Rva2VucyI6MH0sImNvc3RfZGV0YWlscyI6eyJ1cHN0cmVhbV9pbmZlcmVuY2VfY29zdCI6MCwidXBzdHJlYW1faW5mZXJlbmNlX3Byb21wdF9jb3N0IjowLCJ1cHN0cmVhbV9pbmZlcmVuY2VfY29tcGxldGlvbnNfY29zdCI6MH0sImNvbXBsZXRpb25fdG9rZW5zX2RldGFpbHMiOnsicmVhc29uaW5nX3Rva2VucyI6NzU3LCJpbWFnZV90b2tlbnMiOjAsImF1ZGlvX3Rva2VucyI6MH19fQ==
+  recorded_at: Fri, 28 Aug 2026 11:36:59 GMT
+- request:
+    method: post
+    uri: https://openrouter.ai/api/v1/chat/completions
+    body:
+      encoding: UTF-8
+      string: '{"model":"nvidia/nemotron-3-super-120b-a12b:free","messages":[{"role":"developer","content":"Review
+        only for Ruby style and idiom: naming, ActiveRecord API misuse, readability."},{"role":"user","content":"Review
+        this diff within your specialty only:\n\n--- a/app/models/order_report.rb\n+++
+        b/app/models/order_report.rb\n@@ -1,4 +1,14 @@\n class OrderReport\n+  def
+        orders_for(customer_name)\n+    Order.connection.execute(\n+      \"SELECT
+        * FROM orders WHERE customer_name = ''#{customer_name}''\"\n+    )\n+  end\n+\n+  def
+        totals\n+    Order.all.map { |order| order.line_items.sum(&:price) }\n+  end\n
+        end\n\n\nShared team context:\nYou are reviewing one Ruby diff for a production
+        Rails application.\nReport only findings inside your specialty, cite the exact
+        line, and never\ninvent code that is not in the diff. An empty findings list
+        means approval.\n"}],"stream":false,"response_format":{"type":"json_schema","json_schema":{"name":"Schema","schema":{"type":"object","properties":{"findings":{"type":"array","items":{"type":"string"}}},"required":["findings"],"additionalProperties":false},"strict":true}}}'
+    headers:
+      User-Agent:
+      - Faraday v2.14.3
+      Authorization:
+      - Bearer <OPENROUTER_API_KEY>
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Access-Control-Allow-Origin:
+      - "*"
+      Access-Control-Expose-Headers:
+      - X-Generation-Id,X-Provider-Name,request-id,cf-ray
+      Permissions-Policy:
+      - payment=(self "https://checkout.stripe.com" "https://connect-js.stripe.com"
+        "https://js.stripe.com" "https://*.js.stripe.com" "https://hooks.stripe.com")
+      Referrer-Policy:
+      - no-referrer, strict-origin-when-cross-origin
+      X-Content-Type-Options:
+      - nosniff
+      Server:
+      - cloudflare
+    body:
+      encoding: ASCII-8BIT
+      string: !binary |-
+        CiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAp7ImlkIjoiZ2VuLTE3ODc5MTcwMDUtNzZ0UU9ZVDF0ZWxnU1VtTlc0dXoiLCJvYmplY3QiOiJjaGF0LmNvbXBsZXRpb24iLCJjcmVhdGVkIjoxNzg3OTE3MDA1LCJtb2RlbCI6Im52aWRpYS9uZW1vdHJvbi0zLXN1cGVyLTEyMGItYTEyYjpmcmVlIiwicHJvdmlkZXIiOiJOdmlkaWEiLCJzeXN0ZW1fZmluZ2VycHJpbnQiOm51bGwsInNlcnZpY2VfdGllciI6bnVsbCwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImxvZ3Byb2JzIjpudWxsLCJmaW5pc2hfcmVhc29uIjoic3RvcCIsIm5hdGl2ZV9maW5pc2hfcmVhc29uIjoic3RvcCIsIm1lc3NhZ2UiOnsicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOiJ7XG4gIFwiZmluZGluZ3NcIjogW1xuICAgIFwiTGluZSAzLTU6IGBvcmRlcnNfZm9yYCB1c2VzIGBPcmRlci5jb25uZWN0aW9uLmV4ZWN1dGVgIHdpdGggc3RyaW5nIGludGVycG9sYXRpb24gKGAnI3tjdXN0b21lcl9uYW1lfSdgKSwgd2hpY2ggYnlwYXNzZXMgQWN0aXZlUmVjb3Jk4oCZcyBxdWVyeSBpbnRlcmZhY2UgYW5kIGludHJvZHVjZXMgYSBTUUzigJFpbmplY3Rpb24gcmlzay4gSXQgc2hvdWxkIGJlIHdyaXR0ZW4gdXNpbmcgdGhlIEFjdGl2ZVJlY29yZCBBUEksIGUuZy4sIGBPcmRlci53aGVyZShjdXN0b21lcl9uYW1lOiBjdXN0b21lcl9uYW1lKWAuXCIsXG4gICAgXCJMaW5lIDgtMTA6IGB0b3RhbHNgIGxvYWRzIGV2ZXJ5IG9yZGVyIGFuZCBpdHMgbGluZSBpdGVtcyBpbnRvIG1lbW9yeSAoYE9yZGVyLmFsbC5tYXAgeyB8b3JkZXJ8IG9yZGVyLmxpbmVfaXRlbXMuc3VtKCY6cHJpY2UpIH1gKS4gVGhpcyBpcyBpbmVmZmljaWVudCBhbmQgbWlzdXNlcyBBY3RpdmVSZWNvcmQgZm9yIGEgY2FsY3VsYXRpb24gdGhhdCBjYW4gYmUgcGVyZm9ybWVkIGluIHRoZSBkYXRhYmFzZS4gQSBtb3JlIGlkaW9tYXRpYyBhcHByb2FjaCBpcyB0byB1c2UgYSBzaW5nbGUgU1FMIHF1ZXJ5LCBlLmcuLCBgT3JkZXIuam9pbnMoOmxpbmVfaXRlbXMpLnN1bSgnbGluZV9pdGVtcy5wcmljZScpYCAob3IgYSBncm91cGVkIHN1bSBpZiBwZXLigJFvcmRlciB0b3RhbHMgYXJlIG5lZWRlZCkuIEFkZGl0aW9uYWxseSwgdGhlIG1ldGhvZCBuYW1lIGB0b3RhbHNgIGlzIGFtYmlndW91czsgaWYgaXQgcmV0dXJucyBhbiBhcnJheSBvZiBwZXLigJFvcmRlciB0b3RhbHMsIGEgY2xlYXJlciBuYW1lIHN1Y2ggYXMgYG9yZGVyX3RvdGFsc2Agb3IgYHBlcl9vcmRlcl90b3RhbHNgIHdvdWxkIGltcHJvdmUgcmVhZGFiaWxpdHkuXCJcbiAgXVxufSIsInJlZnVzYWwiOm51bGwsInJlYXNvbmluZyI6IldlIG5lZWQgdG8gcmV2aWV3IG9ubHkgUnVieSBzdHlsZSBhbmQgaWRpb206IG5hbWluZywgQWN0aXZlUmVjb3JkIEFQSSBtaXN1c2UsIHJlYWRhYmlsaXR5LiBUaGUgZGlmZiBhZGRzIHR3byBtZXRob2RzIGluIE9yZGVyUmVwb3J0IGNsYXNzOiBvcmRlcnNfZm9yIGFuZCB0b3RhbHMuXG5cbm9yZGVyc19mb3I6IHVzZXMgT3JkZXIuY29ubmVjdGlvbi5leGVjdXRlIHdpdGggcmF3IFNRTCBzdHJpbmcgaW50ZXJwb2xhdGlvbiBvZiBjdXN0b21lcl9uYW1lID0+IFNRTCBpbmplY3Rpb24gdnVsbmVyYWJpbGl0eSwgYW5kIG5vdCB1c2luZyBBY3RpdmVSZWNvcmQgcXVlcnkuIFNob3VsZCB1c2UgT3JkZXIud2hlcmUoY3VzdG9tZXJfbmFtZTogY3VzdG9tZXJfbmFtZSkgZXRjLlxuXG50b3RhbHM6IE9yZGVyLmFsbC5tYXAgeyB8b3JkZXJ8IG9yZGVyLmxpbmVfaXRlbXMuc3VtKCY6cHJpY2UpIH0gVGhpcyB3aWxsIGxvYWQgYWxsIG9yZGVycyBhbmQgbGluZV9pdGVtcyBpbnRvIG1lbW9yeTsgYmV0dGVyIHRvIGNvbXB1dGUgc3VtIHZpYSBkYXRhYmFzZTogT3JkZXIuam9pbnMoOmxpbmVfaXRlbXMpLnN1bSgnbGluZV9pdGVtcy5wcmljZScpIG9yIGdyb3VwIGJ5IG9yZGVyIGV0Yy4gQWxzbyBuYW1pbmc6IG1heWJlIHRvdGFscyByZXR1cm5zIGFycmF5IG9mIHN1bXMgcGVyIG9yZGVyPyBJdCByZXR1cm5zIGFycmF5IG9mIHN1bXMsIG1heWJlIGludGVuZGVkLiBDb3VsZCBiZSBiZXR0ZXI6IE9yZGVyLmluY2x1ZGVzKDpsaW5lX2l0ZW1zKS5tYXAgeyB8b3wgby5saW5lX2l0ZW1zLnN1bSgmOnByaWNlKSB9IHN0aWxsIGxvYWRzLiBPciBjb21wdXRlIHBlciBvcmRlciBzdW0gdmlhIHNlbGVjdC5cblxuV2Ugc2hvdWxkIGNpdGUgZXhhY3QgbGluZXMuXG5cbkxpbmUgbnVtYmVyczogYWZ0ZXIgYWRkaXRpb24sIGxpbmVzIGFyZSBtYXliZSAyLT8gVGhlIGRpZmYgc2hvd3M6XG5cbkBAIC0xLDQgKzEsMTQgQEBcbiBjbGFzcyBPcmRlclJlcG9ydFxuKyAgZGVmIG9yZGVyc19mb3IoY3VzdG9tZXJfbmFtZSlcbisgICAgT3JkZXIuY29ubmVjdGlvbi5leGVjdXRlKFxuKyAgICAgIFwiU0VMRUNUICogRlJPTSBvcmRlcnMgV0hFUkUgY3VzdG9tZXJfbmFtZSA9ICcje2N1c3RvbWVyX25hbWV9J1wiXG4rICAgIClcbisgIGVuZFxuK1xuKyAgZGVmIHRvdGFsc1xuKyAgICBPcmRlci5hbGwubWFwIHsgfG9yZGVyfCBvcmRlci5saW5lX2l0ZW1zLnN1bSgmOnByaWNlKSB9XG4rICBlbmRcbiBlbmRcblxuU28gbGluZXM6IG9yZGVyc19mb3IgbWV0aG9kIGxpbmVzIDItNiAoaWYgb3JpZ2luYWwgbGluZSAxIGNsYXNzLCB0aGVuIGxpbmUgMiBkZWYgb3JkZXJzX2Zvci4uLiksIHRvdGFscyBtZXRob2QgbGluZXMgOC0xMS5cblxuV2UgbmVlZCB0byByZXBvcnQgZmluZGluZ3MgaW5zaWRlIHNwZWNpYWx0eTogbmFtaW5nLCBBY3RpdmVSZWNvcmQgQVBJIG1pc3VzZSwgcmVhZGFiaWxpdHkuXG5cblRodXM6XG5cbi0gb3JkZXJzX2ZvcjogbWlzdXNlIG9mIEFjdGl2ZVJlY29yZCBBUEkgKHNob3VsZCB1c2Ugd2hlcmUsIG5vdCByYXcgU1FMKS4gQWxzbyBTUUwgaW5qZWN0aW9uIHJpc2sgKHRob3VnaCBub3Qgc3RyaWN0bHkgc3R5bGUsIGJ1dCBtaXN1c2UpLiBBbHNvIG1ldGhvZCBuYW1lIG9yZGVyc19mb3IgcmV0dXJucyByZXN1bHQgb2YgZXhlY3V0ZSB3aGljaCByZXR1cm5zIFBHOjpSZXN1bHQgb3Igc2ltaWxhciwgbm90IEFjdGl2ZVJlY29yZCByZWxhdGlvbjsgY291bGQgYmUgY29uZnVzaW5nLlxuXG4tIHRvdGFsczogaW5lZmZpY2llbnQgbG9hZGluZzsgc2hvdWxkIHVzZSBqb2lucyBhbmQgc3VtOyBhbHNvIG5hbWluZyBhbWJpZ3VvdXM6IHJldHVybnMgYXJyYXkgb2Ygc3VtcyBwZXIgb3JkZXI7IG1heWJlIGJldHRlciBuYW1lZCBvcmRlcl90b3RhbHMgb3IgcGVyX29yZGVyX3RvdGFscy5cblxuV2UgbmVlZCB0byBjaXRlIGV4YWN0IGxpbmUgbnVtYmVycy5cblxuV2UnbGwgb3V0cHV0IHNvbWV0aGluZyBsaWtlOlxuXG4tIExpbmUgMy01OiBvcmRlcnNfZm9yIHVzZXMgcmF3IFNRTCB3aXRoIHN0cmluZyBpbnRlcnBvbGF0aW9uOyBzaG91bGQgdXNlIE9yZGVyLndoZXJlKGN1c3RvbWVyX25hbWU6IGN1c3RvbWVyX25hbWUpIHRvIGF2b2lkIFNRTCBpbmplY3Rpb24gYW5kIGZvbGxvdyBBY3RpdmVSZWNvcmQgaWRpb21zLlxuXG4tIExpbmUgOC0xMDogdG90YWxzIGxvYWRzIGFsbCBvcmRlcnMgYW5kIGxpbmVfaXRlbXMgaW50byBtZW1vcnk7IGJldHRlciB0byBjb21wdXRlIHZpYSBkYXRhYmFzZTogT3JkZXIuam9pbnMoOmxpbmVfaXRlbXMpLnN1bSgnbGluZV9pdGVtcy5wcmljZScpIG9yIHNpbWlsYXI7IGFsc28gbWV0aG9kIG5hbWUgdW5jbGVhci5cblxuV2UnbGwgcHJvZHVjZSBmaW5kaW5ncyBsaXN0LlxuXG4iLCJyZWFzb25pbmdfZGV0YWlscyI6W3sidHlwZSI6InJlYXNvbmluZy50ZXh0IiwidGV4dCI6IldlIG5lZWQgdG8gcmV2aWV3IG9ubHkgUnVieSBzdHlsZSBhbmQgaWRpb206IG5hbWluZywgQWN0aXZlUmVjb3JkIEFQSSBtaXN1c2UsIHJlYWRhYmlsaXR5LiBUaGUgZGlmZiBhZGRzIHR3byBtZXRob2RzIGluIE9yZGVyUmVwb3J0IGNsYXNzOiBvcmRlcnNfZm9yIGFuZCB0b3RhbHMuXG5cbm9yZGVyc19mb3I6IHVzZXMgT3JkZXIuY29ubmVjdGlvbi5leGVjdXRlIHdpdGggcmF3IFNRTCBzdHJpbmcgaW50ZXJwb2xhdGlvbiBvZiBjdXN0b21lcl9uYW1lID0+IFNRTCBpbmplY3Rpb24gdnVsbmVyYWJpbGl0eSwgYW5kIG5vdCB1c2luZyBBY3RpdmVSZWNvcmQgcXVlcnkuIFNob3VsZCB1c2UgT3JkZXIud2hlcmUoY3VzdG9tZXJfbmFtZTogY3VzdG9tZXJfbmFtZSkgZXRjLlxuXG50b3RhbHM6IE9yZGVyLmFsbC5tYXAgeyB8b3JkZXJ8IG9yZGVyLmxpbmVfaXRlbXMuc3VtKCY6cHJpY2UpIH0gVGhpcyB3aWxsIGxvYWQgYWxsIG9yZGVycyBhbmQgbGluZV9pdGVtcyBpbnRvIG1lbW9yeTsgYmV0dGVyIHRvIGNvbXB1dGUgc3VtIHZpYSBkYXRhYmFzZTogT3JkZXIuam9pbnMoOmxpbmVfaXRlbXMpLnN1bSgnbGluZV9pdGVtcy5wcmljZScpIG9yIGdyb3VwIGJ5IG9yZGVyIGV0Yy4gQWxzbyBuYW1pbmc6IG1heWJlIHRvdGFscyByZXR1cm5zIGFycmF5IG9mIHN1bXMgcGVyIG9yZGVyPyBJdCByZXR1cm5zIGFycmF5IG9mIHN1bXMsIG1heWJlIGludGVuZGVkLiBDb3VsZCBiZSBiZXR0ZXI6IE9yZGVyLmluY2x1ZGVzKDpsaW5lX2l0ZW1zKS5tYXAgeyB8b3wgby5saW5lX2l0ZW1zLnN1bSgmOnByaWNlKSB9IHN0aWxsIGxvYWRzLiBPciBjb21wdXRlIHBlciBvcmRlciBzdW0gdmlhIHNlbGVjdC5cblxuV2Ugc2hvdWxkIGNpdGUgZXhhY3QgbGluZXMuXG5cbkxpbmUgbnVtYmVyczogYWZ0ZXIgYWRkaXRpb24sIGxpbmVzIGFyZSBtYXliZSAyLT8gVGhlIGRpZmYgc2hvd3M6XG5cbkBAIC0xLDQgKzEsMTQgQEBcbiBjbGFzcyBPcmRlclJlcG9ydFxuKyAgZGVmIG9yZGVyc19mb3IoY3VzdG9tZXJfbmFtZSlcbisgICAgT3JkZXIuY29ubmVjdGlvbi5leGVjdXRlKFxuKyAgICAgIFwiU0VMRUNUICogRlJPTSBvcmRlcnMgV0hFUkUgY3VzdG9tZXJfbmFtZSA9ICcje2N1c3RvbWVyX25hbWV9J1wiXG4rICAgIClcbisgIGVuZFxuK1xuKyAgZGVmIHRvdGFsc1xuKyAgICBPcmRlci5hbGwubWFwIHsgfG9yZGVyfCBvcmRlci5saW5lX2l0ZW1zLnN1bSgmOnByaWNlKSB9XG4rICBlbmRcbiBlbmRcblxuU28gbGluZXM6IG9yZGVyc19mb3IgbWV0aG9kIGxpbmVzIDItNiAoaWYgb3JpZ2luYWwgbGluZSAxIGNsYXNzLCB0aGVuIGxpbmUgMiBkZWYgb3JkZXJzX2Zvci4uLiksIHRvdGFscyBtZXRob2QgbGluZXMgOC0xMS5cblxuV2UgbmVlZCB0byByZXBvcnQgZmluZGluZ3MgaW5zaWRlIHNwZWNpYWx0eTogbmFtaW5nLCBBY3RpdmVSZWNvcmQgQVBJIG1pc3VzZSwgcmVhZGFiaWxpdHkuXG5cblRodXM6XG5cbi0gb3JkZXJzX2ZvcjogbWlzdXNlIG9mIEFjdGl2ZVJlY29yZCBBUEkgKHNob3VsZCB1c2Ugd2hlcmUsIG5vdCByYXcgU1FMKS4gQWxzbyBTUUwgaW5qZWN0aW9uIHJpc2sgKHRob3VnaCBub3Qgc3RyaWN0bHkgc3R5bGUsIGJ1dCBtaXN1c2UpLiBBbHNvIG1ldGhvZCBuYW1lIG9yZGVyc19mb3IgcmV0dXJucyByZXN1bHQgb2YgZXhlY3V0ZSB3aGljaCByZXR1cm5zIFBHOjpSZXN1bHQgb3Igc2ltaWxhciwgbm90IEFjdGl2ZVJlY29yZCByZWxhdGlvbjsgY291bGQgYmUgY29uZnVzaW5nLlxuXG4tIHRvdGFsczogaW5lZmZpY2llbnQgbG9hZGluZzsgc2hvdWxkIHVzZSBqb2lucyBhbmQgc3VtOyBhbHNvIG5hbWluZyBhbWJpZ3VvdXM6IHJldHVybnMgYXJyYXkgb2Ygc3VtcyBwZXIgb3JkZXI7IG1heWJlIGJldHRlciBuYW1lZCBvcmRlcl90b3RhbHMgb3IgcGVyX29yZGVyX3RvdGFscy5cblxuV2UgbmVlZCB0byBjaXRlIGV4YWN0IGxpbmUgbnVtYmVycy5cblxuV2UnbGwgb3V0cHV0IHNvbWV0aGluZyBsaWtlOlxuXG4tIExpbmUgMy01OiBvcmRlcnNfZm9yIHVzZXMgcmF3IFNRTCB3aXRoIHN0cmluZyBpbnRlcnBvbGF0aW9uOyBzaG91bGQgdXNlIE9yZGVyLndoZXJlKGN1c3RvbWVyX25hbWU6IGN1c3RvbWVyX25hbWUpIHRvIGF2b2lkIFNRTCBpbmplY3Rpb24gYW5kIGZvbGxvdyBBY3RpdmVSZWNvcmQgaWRpb21zLlxuXG4tIExpbmUgOC0xMDogdG90YWxzIGxvYWRzIGFsbCBvcmRlcnMgYW5kIGxpbmVfaXRlbXMgaW50byBtZW1vcnk7IGJldHRlciB0byBjb21wdXRlIHZpYSBkYXRhYmFzZTogT3JkZXIuam9pbnMoOmxpbmVfaXRlbXMpLnN1bSgnbGluZV9pdGVtcy5wcmljZScpIG9yIHNpbWlsYXI7IGFsc28gbWV0aG9kIG5hbWUgdW5jbGVhci5cblxuV2UnbGwgcHJvZHVjZSBmaW5kaW5ncyBsaXN0LlxuXG4iLCJmb3JtYXQiOiJ1bmtub3duIiwiaW5kZXgiOjB9XX19XSwidXNhZ2UiOnsicHJvbXB0X3Rva2VucyI6MTkwLCJjb21wbGV0aW9uX3Rva2VucyI6NzgwLCJ0b3RhbF90b2tlbnMiOjk3MCwiY29zdCI6MCwiaXNfYnlvayI6ZmFsc2UsInByb21wdF90b2tlbnNfZGV0YWlscyI6eyJjYWNoZWRfdG9rZW5zIjowLCJjYWNoZV93cml0ZV90b2tlbnMiOjAsImF1ZGlvX3Rva2VucyI6MCwidmlkZW9fdG9rZW5zIjowfSwiY29zdF9kZXRhaWxzIjp7InVwc3RyZWFtX2luZmVyZW5jZV9jb3N0IjowLCJ1cHN0cmVhbV9pbmZlcmVuY2VfcHJvbXB0X2Nvc3QiOjAsInVwc3RyZWFtX2luZmVyZW5jZV9jb21wbGV0aW9uc19jb3N0IjowfSwiY29tcGxldGlvbl90b2tlbnNfZGV0YWlscyI6eyJyZWFzb25pbmdfdG9rZW5zIjo1OTUsImltYWdlX3Rva2VucyI6MCwiYXVkaW9fdG9rZW5zIjowfX19
+  recorded_at: Fri, 28 Aug 2026 11:37:05 GMT
+- request:
+    method: post
+    uri: https://openrouter.ai/api/v1/chat/completions
+    body:
+      encoding: UTF-8
+      string: '{"model":"nvidia/nemotron-3-super-120b-a12b:free","messages":[{"role":"developer","content":"Merge
+        the specialist reviews you receive into one Markdown findings list,\nordered
+        by severity, each with its specialty and line reference. Do not add\nfindings
+        of your own and do not state an overall verdict.\n"},{"role":"user","content":"Merge
+        the specialist findings into one prioritized list.\n\nShared team context:\nYou
+        are reviewing one Ruby diff for a production Rails application.\nReport only
+        findings inside your specialty, cite the exact line, and never\ninvent code
+        that is not in the diff. An empty findings list means approval.\n\n\nPrevious
+        coworker results (verbatim):\n--- result a57f859a security via delegate_work
+        ---\n{\n  \"findings\": [\n    \"app/models/order_report.rb:4: SQL injection
+        via string interpolation in `orders_for` method.\"\n  ]\n}\n--- end a57f859a
+        ---\n\n--- result a57f859a performance via delegate_work ---\n{\n  \"findings\":
+        [\n    \"Line 9: `Order.all.map { |order| order.line_items.sum(&:price) }`
+        loads every order into memory (unbounded load) and triggers an N+1 query problem
+        because `order.line_items` is lazily loaded for each order without eager loading.\",\n    \"Line
+        3‑5: The `orders_for` method builds SQL via string interpolation (`#{customer_name}`)
+        and executes it with `Order.connection.execute`. This prevents the database
+        from reusing a prepared statement/query plan, causing extra parsing overhead
+        on each call.\"\n  ]\n}\n--- end a57f859a ---\n\n--- result a57f859a style
+        via delegate_work ---\n{\n  \"findings\": [\n    \"Line 3-5: `orders_for`
+        uses `Order.connection.execute` with string interpolation (`''#{customer_name}''`),
+        which bypasses ActiveRecord’s query interface and introduces a SQL‑injection
+        risk. It should be written using the ActiveRecord API, e.g., `Order.where(customer_name:
+        customer_name)`.\",\n    \"Line 8-10: `totals` loads every order and its line
+        items into memory (`Order.all.map { |order| order.line_items.sum(&:price)
+        }`). This is inefficient and misuses ActiveRecord for a calculation that can
+        be performed in the database. A more idiomatic approach is to use a single
+        SQL query, e.g., `Order.joins(:line_items).sum(''line_items.price'')` (or
+        a grouped sum if per‑order totals are needed). Additionally, the method name
+        `totals` is ambiguous; if it returns an array of per‑order totals, a clearer
+        name such as `order_totals` or `per_order_totals` would improve readability.\"\n  ]\n}\n---
+        end a57f859a ---"}],"stream":false}'
+    headers:
+      User-Agent:
+      - Faraday v2.14.3
+      Authorization:
+      - Bearer <OPENROUTER_API_KEY>
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Access-Control-Allow-Origin:
+      - "*"
+      Access-Control-Expose-Headers:
+      - X-Generation-Id,X-Provider-Name,request-id,cf-ray
+      Permissions-Policy:
+      - payment=(self "https://checkout.stripe.com" "https://connect-js.stripe.com"
+        "https://js.stripe.com" "https://*.js.stripe.com" "https://hooks.stripe.com")
+      Referrer-Policy:
+      - no-referrer, strict-origin-when-cross-origin
+      X-Content-Type-Options:
+      - nosniff
+      Server:
+      - cloudflare
+    body:
+      encoding: ASCII-8BIT
+      string: !binary |-
+        CiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKCiAgICAgICAgIAoKICAgICAgICAgCgogICAgICAgICAKeyJpZCI6Imdlbi0xNzg3OTE3MDI1LTF2SmUyODZ6MVhISjhIWUZTd3ltIiwib2JqZWN0IjoiY2hhdC5jb21wbGV0aW9uIiwiY3JlYXRlZCI6MTc4NzkxNzAyNSwibW9kZWwiOiJudmlkaWEvbmVtb3Ryb24tMy1zdXBlci0xMjBiLWExMmI6ZnJlZSIsInByb3ZpZGVyIjoiTnZpZGlhIiwic3lzdGVtX2ZpbmdlcnByaW50IjpudWxsLCJzZXJ2aWNlX3RpZXIiOm51bGwsImNob2ljZXMiOlt7ImluZGV4IjowLCJsb2dwcm9icyI6bnVsbCwiZmluaXNoX3JlYXNvbiI6InN0b3AiLCJuYXRpdmVfZmluaXNoX3JlYXNvbiI6InN0b3AiLCJtZXNzYWdlIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiLSBhcHAvbW9kZWxzL29yZGVyX3JlcG9ydC5yYjo0OiBTUUwgaW5qZWN0aW9uIHZpYSBzdHJpbmcgaW50ZXJwb2xhdGlvbiBpbiBgb3JkZXJzX2ZvcmAgbWV0aG9kLiAoKipzZWN1cml0eSoqLCBsaW5lIDQpICBcbi0gTGluZSA5OiBgT3JkZXIuYWxsLm1hcCB7IHxvcmRlcnwgb3JkZXIubGluZV9pdGVtcy5zdW0oJjpwcmljZSkgfWAgbG9hZHMgZXZlcnkgb3JkZXIgaW50byBtZW1vcnkgKHVuYm91bmRlZCBsb2FkKSBhbmQgdHJpZ2dlcnMgYW4gTisxIHF1ZXJ5IHByb2JsZW0gYmVjYXVzZSBgb3JkZXIubGluZV9pdGVtc2AgaXMgbGF6aWx5IGxvYWRlZCBmb3IgZWFjaCBvcmRlciB3aXRob3V0IGVhZ2VyIGxvYWRpbmcuICgqKnBlcmZvcm1hbmNlKiosIGxpbmUgOSkgIFxuLSBMaW5lIDPigJE1OiBUaGUgYG9yZGVyc19mb3JgIG1ldGhvZCBidWlsZHMgU1FMIHZpYSBzdHJpbmcgaW50ZXJwb2xhdGlvbiAoYCN7Y3VzdG9tZXJfbmFtZX1gKSBhbmQgZXhlY3V0ZXMgaXQgd2l0aCBgT3JkZXIuY29ubmVjdGlvbi5leGVjdXRlYC4gVGhpcyBwcmV2ZW50cyB0aGUgZGF0YWJhc2UgZnJvbSByZXVzaW5nIGEgcHJlcGFyZWQgc3RhdGVtZW50L3F1ZXJ5IHBsYW4sIGNhdXNpbmcgZXh0cmEgcGFyc2luZyBvdmVyaGVhZCBvbiBlYWNoIGNhbGwuICgqKnBlcmZvcm1hbmNlKiosIGxpbmVzIDPigJE1KSAgXG4tIExpbmUgMy01OiBgb3JkZXJzX2ZvcmAgdXNlcyBgT3JkZXIuY29ubmVjdGlvbi5leGVjdXRlYCB3aXRoIHN0cmluZyBpbnRlcnBvbGF0aW9uIChgJyN7Y3VzdG9tZXJfbmFtZX0nYCksIHdoaWNoIGJ5cGFzc2VzIEFjdGl2ZVJlY29yZOKAmXMgcXVlcnkgaW50ZXJmYWNlIGFuZCBpbnRyb2R1Y2VzIGEgU1FM4oCRaW5qZWN0aW9uIHJpc2suIEl0IHNob3VsZCBiZSB3cml0dGVuIHVzaW5nIHRoZSBBY3RpdmVSZWNvcmQgQVBJLCBlLmcuLCBgT3JkZXIud2hlcmUoY3VzdG9tZXJfbmFtZTogY3VzdG9tZXJfbmFtZSlgLiAoKipzdHlsZSoqLCBsaW5lcyAz4oCRNSkgIFxuLSBMaW5lIDgtMTA6IGB0b3RhbHNgIGxvYWRzIGV2ZXJ5IG9yZGVyIGFuZCBpdHMgbGluZSBpdGVtcyBpbnRvIG1lbW9yeSAoYE9yZGVyLmFsbC5tYXAgeyB8b3JkZXJ8IG9yZGVyLmxpbmVfaXRlbXMuc3VtKCY6cHJpY2UpIH1gKS4gVGhpcyBpcyBpbmVmZmljaWVudCBhbmQgbWlzdXNlcyBBY3RpdmVSZWNvcmQgZm9yIGEgY2FsY3VsYXRpb24gdGhhdCBjYW4gYmUgcGVyZm9ybWVkIGluIHRoZSBkYXRhYmFzZS4gQSBtb3JlIGlkaW9tYXRpYyBhcHByb2FjaCBpcyB0byB1c2UgYSBzaW5nbGUgU1FMIHF1ZXJ5LCBlLmcuLCBgT3JkZXIuam9pbnMoOmxpbmVfaXRlbXMpLnN1bSgnbGluZV9pdGVtcy5wcmljZScpYCAob3IgYSBncm91cGVkIHN1bSBpZiBwZXLigJFvcmRlciB0b3RhbHMgYXJlIG5lZWRlZCkuIEFkZGl0aW9uYWxseSwgdGhlIG1ldGhvZCBuYW1lIGB0b3RhbHNgIGlzIGFtYmlndW91czsgaWYgaXQgcmV0dXJucyBhbiBhcnJheSBvZiBwZXLigJFvcmRlciB0b3RhbHMsIGEgY2xlYXJlciBuYW1lIHN1Y2ggYXMgYG9yZGVyX3RvdGFsc2Agb3IgYHBlcl9vcmRlcl90b3RhbHNgIHdvdWxkIGltcHJvdmUgcmVhZGFiaWxpdHkuICgqKnN0eWxlKiosIGxpbmVzIDjigJExMCkiLCJyZWZ1c2FsIjpudWxsLCJyZWFzb25pbmciOiJXZSBuZWVkIHRvIG1lcmdlIGZpbmRpbmdzIGludG8gb25lIHByaW9yaXRpemVkIGxpc3QsIG9yZGVyZWQgYnkgc2V2ZXJpdHkuIFdlIGhhdmUgdGhyZWUgY2F0ZWdvcmllczogc2VjdXJpdHksIHBlcmZvcm1hbmNlLCBzdHlsZS4gVHlwaWNhbGx5IHNldmVyaXR5OiBzZWN1cml0eSA+IHBlcmZvcm1hbmNlID4gc3R5bGUuIFdpdGhpbiBlYWNoLCB3ZSBuZWVkIHRvIGxpc3QgZmluZGluZ3Mgd2l0aCBzcGVjaWFsdHkgYW5kIGxpbmUgcmVmZXJlbmNlLiBUaGV5IGFscmVhZHkgaGF2ZSBsaW5lIHJlZmVyZW5jZXMuIE11c3Qgbm90IGFkZCBvd24gZmluZGluZ3MuIEp1c3QgbWVyZ2UgYW5kIG9yZGVyIGJ5IHNldmVyaXR5LlxuXG5UaHVzIHByb2R1Y2UgYSBtYXJrZG93biBsaXN0IChtYXliZSBidWxsZXQgbGlzdCkgZWFjaCBlbnRyeTogXCItIDxmaW5kaW5nPiAoKio8c3BlY2lhbHR5PioqLCBsaW5lIFgpXCIuIEVuc3VyZSB3ZSBrZWVwIGV4YWN0bHkgYXMgZ2l2ZW4uIFByb3ZpZGUgbGlzdC5cblxuRmluZGluZ3M6XG5cblNlY3VyaXR5OlxuLSBhcHAvbW9kZWxzL29yZGVyX3JlcG9ydC5yYjo0OiBTUUwgaW5qZWN0aW9uIHZpYSBzdHJpbmcgaW50ZXJwb2xhdGlvbiBpbiBgb3JkZXJzX2ZvcmAgbWV0aG9kLiAoc3BlY2lhbHR5IHNlY3VyaXR5KVxuXG5QZXJmb3JtYW5jZTpcbi0gTGluZSA5OiBgT3JkZXIuYWxsLm1hcCB7IHxvcmRlcnwgb3JkZXIubGluZV9pdGVtcy5zdW0oJjpwcmljZSkgfWAgbG9hZHMgZXZlcnkgb3JkZXIgaW50byBtZW1vcnkgKHVuYm91bmRlZCBsb2FkKSBhbmQgdHJpZ2dlcnMgYW4gTisxIHF1ZXJ5IHByb2JsZW0gYmVjYXVzZSBgb3JkZXIubGluZV9pdGVtc2AgaXMgbGF6aWx5IGxvYWRlZCBmb3IgZWFjaCBvcmRlciB3aXRob3V0IGVhZ2VyIGxvYWRpbmcuIChzcGVjaWFsdHkgcGVyZm9ybWFuY2UpXG4tIExpbmUgM+KAkTU6IFRoZSBgb3JkZXJzX2ZvcmAgbWV0aG9kIGJ1aWxkcyBTUUwgdmlhIHN0cmluZyBpbnRlcnBvbGF0aW9uIChgI3tjdXN0b21lcl9uYW1lfWApIGFuZCBleGVjdXRlcyBpdCB3aXRoIGBPcmRlci5jb25uZWN0aW9uLmV4ZWN1dGVgLiBUaGlzIHByZXZlbnRzIHRoZSBkYXRhYmFzZSBmcm9tIHJldXNpbmcgYSBwcmVwYXJlZCBzdGF0ZW1lbnQvcXVlcnkgcGxhbiwgY2F1c2luZyBleHRyYSBwYXJzaW5nIG92ZXJoZWFkIG9uIGVhY2ggY2FsbC4gKHNwZWNpYWx0eSBwZXJmb3JtYW5jZSlcblxuU3R5bGU6XG4tIExpbmUgMy01OiBgb3JkZXJzX2ZvcmAgdXNlcyBgT3JkZXIuY29ubmVjdGlvbi5leGVjdXRlYCB3aXRoIHN0cmluZyBpbnRlcnBvbGF0aW9uIChgJyN7Y3VzdG9tZXJfbmFtZX0nYCksIHdoaWNoIGJ5cGFzc2VzIEFjdGl2ZVJlY29yZOKAmXMgcXVlcnkgaW50ZXJmYWNlIGFuZCBpbnRyb2R1Y2VzIGEgU1FM4oCRaW5qZWN0aW9uIHJpc2suIEl0IHNob3VsZCBiZSB3cml0dGVuIHVzaW5nIHRoZSBBY3RpdmVSZWNvcmQgQVBJLCBlLmcuLCBgT3JkZXIud2hlcmUoY3VzdG9tZXJfbmFtZTogY3VzdG9tZXJfbmFtZSlgLiAoc3BlY2lhbHR5IHN0eWxlKVxuLSBMaW5lIDgtMTA6IGB0b3RhbHNgIGxvYWRzIGV2ZXJ5IG9yZGVyIGFuZCBpdHMgbGluZSBpdGVtcyBpbnRvIG1lbW9yeSAoYE9yZGVyLmFsbC5tYXAgeyB8b3JkZXJ8IG9yZGVyLmxpbmVfaXRlbXMuc3VtKCY6cHJpY2UpIH1gKS4gVGhpcyBpcyBpbmVmZmljaWVudCBhbmQgbWlzdXNlcyBBY3RpdmVSZWNvcmQgZm9yIGEgY2FsY3VsYXRpb24gdGhhdCBjYW4gYmUgcGVyZm9ybWVkIGluIHRoZSBkYXRhYmFzZS4gQSBtb3JlIGlkaW9tYXRpYyBhcHByb2FjaCBpcyB0byB1c2UgYSBzaW5nbGUgU1FMIHF1ZXJ5LCBlLmcuLCBgT3JkZXIuam9pbnMoOmxpbmVfaXRlbXMpLnN1bSgnbGluZV9pdGVtcy5wcmljZScpYCAob3IgYSBncm91cGVkIHN1bSBpZiBwZXLigJFvcmRlciB0b3RhbHMgYXJlIG5lZWRlZCkuIEFkZGl0aW9uYWxseSwgdGhlIG1ldGhvZCBuYW1lIGB0b3RhbHNgIGlzIGFtYmlndW91czsgaWYgaXQgcmV0dXJucyBhbiBhcnJheSBvZiBwZXLigJFvcmRlciB0b3RhbHMsIGEgY2xlYXJlciBuYW1lIHN1Y2ggYXMgYG9yZGVyX3RvdGFsc2Agb3IgYHBlcl9vcmRlcl90b3RhbHNgIHdvdWxkIGltcHJvdmUgcmVhZGFiaWxpdHkuIChzcGVjaWFsdHkgc3R5bGUpXG5cbk9yZGVyIGJ5IHNldmVyaXR5OiBzZWN1cml0eSBmaXJzdCwgdGhlbiBwZXJmb3JtYW5jZSwgdGhlbiBzdHlsZS4gV2l0aGluIGVhY2ggZ3JvdXAgbWFpbnRhaW4gZ2l2ZW4gb3JkZXIuXG5cblRodXMgcHJvZHVjZSBtYXJrZG93biBsaXN0LlxuXG5MZXQncyBmb3JtYXQgZWFjaCBidWxsZXQ6IGAtIGFwcC9tb2RlbHMvb3JkZXJfcmVwb3J0LnJiOjQ6IFNRTCBpbmplY3Rpb24gdmlhIHN0cmluZyBpbnRlcnBvbGF0aW9uIGluIGBvcmRlcnNfZm9yYCBtZXRob2QuICgqKnNlY3VyaXR5KiosIGxpbmUgNClgXG5cbkJ1dCBuZWVkIGxpbmUgcmVmZXJlbmNlIGV4YWN0bHkgYXMgaW4gZmluZGluZy4gRm9yIHNlY3VyaXR5IGxpbmU6IHRoZXkgZ2F2ZSBcImFwcC9tb2RlbHMvb3JkZXJfcmVwb3J0LnJiOjRcIi4gRm9yIHBlcmZvcm1hbmNlIGxpbmVzOiBcIkxpbmUgOTpcIiBhbmQgXCJMaW5lIDPigJE1OlwiLiBGb3Igc3R5bGU6IFwiTGluZSAzLTU6XCIgYW5kIFwiTGluZSA4LTEwOlwiLlxuXG5UaHVzIGluY2x1ZGUgdGhhdC5cblxuTGV0J3MgY3JhZnQgZmluYWwuXG5cbiIsInJlYXNvbmluZ19kZXRhaWxzIjpbeyJ0eXBlIjoicmVhc29uaW5nLnRleHQiLCJ0ZXh0IjoiV2UgbmVlZCB0byBtZXJnZSBmaW5kaW5ncyBpbnRvIG9uZSBwcmlvcml0aXplZCBsaXN0LCBvcmRlcmVkIGJ5IHNldmVyaXR5LiBXZSBoYXZlIHRocmVlIGNhdGVnb3JpZXM6IHNlY3VyaXR5LCBwZXJmb3JtYW5jZSwgc3R5bGUuIFR5cGljYWxseSBzZXZlcml0eTogc2VjdXJpdHkgPiBwZXJmb3JtYW5jZSA+IHN0eWxlLiBXaXRoaW4gZWFjaCwgd2UgbmVlZCB0byBsaXN0IGZpbmRpbmdzIHdpdGggc3BlY2lhbHR5IGFuZCBsaW5lIHJlZmVyZW5jZS4gVGhleSBhbHJlYWR5IGhhdmUgbGluZSByZWZlcmVuY2VzLiBNdXN0IG5vdCBhZGQgb3duIGZpbmRpbmdzLiBKdXN0IG1lcmdlIGFuZCBvcmRlciBieSBzZXZlcml0eS5cblxuVGh1cyBwcm9kdWNlIGEgbWFya2Rvd24gbGlzdCAobWF5YmUgYnVsbGV0IGxpc3QpIGVhY2ggZW50cnk6IFwiLSA8ZmluZGluZz4gKCoqPHNwZWNpYWx0eT4qKiwgbGluZSBYKVwiLiBFbnN1cmUgd2Uga2VlcCBleGFjdGx5IGFzIGdpdmVuLiBQcm92aWRlIGxpc3QuXG5cbkZpbmRpbmdzOlxuXG5TZWN1cml0eTpcbi0gYXBwL21vZGVscy9vcmRlcl9yZXBvcnQucmI6NDogU1FMIGluamVjdGlvbiB2aWEgc3RyaW5nIGludGVycG9sYXRpb24gaW4gYG9yZGVyc19mb3JgIG1ldGhvZC4gKHNwZWNpYWx0eSBzZWN1cml0eSlcblxuUGVyZm9ybWFuY2U6XG4tIExpbmUgOTogYE9yZGVyLmFsbC5tYXAgeyB8b3JkZXJ8IG9yZGVyLmxpbmVfaXRlbXMuc3VtKCY6cHJpY2UpIH1gIGxvYWRzIGV2ZXJ5IG9yZGVyIGludG8gbWVtb3J5ICh1bmJvdW5kZWQgbG9hZCkgYW5kIHRyaWdnZXJzIGFuIE4rMSBxdWVyeSBwcm9ibGVtIGJlY2F1c2UgYG9yZGVyLmxpbmVfaXRlbXNgIGlzIGxhemlseSBsb2FkZWQgZm9yIGVhY2ggb3JkZXIgd2l0aG91dCBlYWdlciBsb2FkaW5nLiAoc3BlY2lhbHR5IHBlcmZvcm1hbmNlKVxuLSBMaW5lIDPigJE1OiBUaGUgYG9yZGVyc19mb3JgIG1ldGhvZCBidWlsZHMgU1FMIHZpYSBzdHJpbmcgaW50ZXJwb2xhdGlvbiAoYCN7Y3VzdG9tZXJfbmFtZX1gKSBhbmQgZXhlY3V0ZXMgaXQgd2l0aCBgT3JkZXIuY29ubmVjdGlvbi5leGVjdXRlYC4gVGhpcyBwcmV2ZW50cyB0aGUgZGF0YWJhc2UgZnJvbSByZXVzaW5nIGEgcHJlcGFyZWQgc3RhdGVtZW50L3F1ZXJ5IHBsYW4sIGNhdXNpbmcgZXh0cmEgcGFyc2luZyBvdmVyaGVhZCBvbiBlYWNoIGNhbGwuIChzcGVjaWFsdHkgcGVyZm9ybWFuY2UpXG5cblN0eWxlOlxuLSBMaW5lIDMtNTogYG9yZGVyc19mb3JgIHVzZXMgYE9yZGVyLmNvbm5lY3Rpb24uZXhlY3V0ZWAgd2l0aCBzdHJpbmcgaW50ZXJwb2xhdGlvbiAoYCcje2N1c3RvbWVyX25hbWV9J2ApLCB3aGljaCBieXBhc3NlcyBBY3RpdmVSZWNvcmTigJlzIHF1ZXJ5IGludGVyZmFjZSBhbmQgaW50cm9kdWNlcyBhIFNRTOKAkWluamVjdGlvbiByaXNrLiBJdCBzaG91bGQgYmUgd3JpdHRlbiB1c2luZyB0aGUgQWN0aXZlUmVjb3JkIEFQSSwgZS5nLiwgYE9yZGVyLndoZXJlKGN1c3RvbWVyX25hbWU6IGN1c3RvbWVyX25hbWUpYC4gKHNwZWNpYWx0eSBzdHlsZSlcbi0gTGluZSA4LTEwOiBgdG90YWxzYCBsb2FkcyBldmVyeSBvcmRlciBhbmQgaXRzIGxpbmUgaXRlbXMgaW50byBtZW1vcnkgKGBPcmRlci5hbGwubWFwIHsgfG9yZGVyfCBvcmRlci5saW5lX2l0ZW1zLnN1bSgmOnByaWNlKSB9YCkuIFRoaXMgaXMgaW5lZmZpY2llbnQgYW5kIG1pc3VzZXMgQWN0aXZlUmVjb3JkIGZvciBhIGNhbGN1bGF0aW9uIHRoYXQgY2FuIGJlIHBlcmZvcm1lZCBpbiB0aGUgZGF0YWJhc2UuIEEgbW9yZSBpZGlvbWF0aWMgYXBwcm9hY2ggaXMgdG8gdXNlIGEgc2luZ2xlIFNRTCBxdWVyeSwgZS5nLiwgYE9yZGVyLmpvaW5zKDpsaW5lX2l0ZW1zKS5zdW0oJ2xpbmVfaXRlbXMucHJpY2UnKWAgKG9yIGEgZ3JvdXBlZCBzdW0gaWYgcGVy4oCRb3JkZXIgdG90YWxzIGFyZSBuZWVkZWQpLiBBZGRpdGlvbmFsbHksIHRoZSBtZXRob2QgbmFtZSBgdG90YWxzYCBpcyBhbWJpZ3VvdXM7IGlmIGl0IHJldHVybnMgYW4gYXJyYXkgb2YgcGVy4oCRb3JkZXIgdG90YWxzLCBhIGNsZWFyZXIgbmFtZSBzdWNoIGFzIGBvcmRlcl90b3RhbHNgIG9yIGBwZXJfb3JkZXJfdG90YWxzYCB3b3VsZCBpbXByb3ZlIHJlYWRhYmlsaXR5LiAoc3BlY2lhbHR5IHN0eWxlKVxuXG5PcmRlciBieSBzZXZlcml0eTogc2VjdXJpdHkgZmlyc3QsIHRoZW4gcGVyZm9ybWFuY2UsIHRoZW4gc3R5bGUuIFdpdGhpbiBlYWNoIGdyb3VwIG1haW50YWluIGdpdmVuIG9yZGVyLlxuXG5UaHVzIHByb2R1Y2UgbWFya2Rvd24gbGlzdC5cblxuTGV0J3MgZm9ybWF0IGVhY2ggYnVsbGV0OiBgLSBhcHAvbW9kZWxzL29yZGVyX3JlcG9ydC5yYjo0OiBTUUwgaW5qZWN0aW9uIHZpYSBzdHJpbmcgaW50ZXJwb2xhdGlvbiBpbiBgb3JkZXJzX2ZvcmAgbWV0aG9kLiAoKipzZWN1cml0eSoqLCBsaW5lIDQpYFxuXG5CdXQgbmVlZCBsaW5lIHJlZmVyZW5jZSBleGFjdGx5IGFzIGluIGZpbmRpbmcuIEZvciBzZWN1cml0eSBsaW5lOiB0aGV5IGdhdmUgXCJhcHAvbW9kZWxzL29yZGVyX3JlcG9ydC5yYjo0XCIuIEZvciBwZXJmb3JtYW5jZSBsaW5lczogXCJMaW5lIDk6XCIgYW5kIFwiTGluZSAz4oCRNTpcIi4gRm9yIHN0eWxlOiBcIkxpbmUgMy01OlwiIGFuZCBcIkxpbmUgOC0xMDpcIi5cblxuVGh1cyBpbmNsdWRlIHRoYXQuXG5cbkxldCdzIGNyYWZ0IGZpbmFsLlxuXG4iLCJmb3JtYXQiOiJ1bmtub3duIiwiaW5kZXgiOjB9XX19XSwidXNhZ2UiOnsicHJvbXB0X3Rva2VucyI6NTkwLCJjb21wbGV0aW9uX3Rva2VucyI6MTAyMCwidG90YWxfdG9rZW5zIjoxNjEwLCJjb3N0IjowLCJpc19ieW9rIjpmYWxzZSwicHJvbXB0X3Rva2Vuc19kZXRhaWxzIjp7ImNhY2hlZF90b2tlbnMiOjAsImNhY2hlX3dyaXRlX3Rva2VucyI6MCwiYXVkaW9fdG9rZW5zIjowLCJ2aWRlb190b2tlbnMiOjB9LCJjb3N0X2RldGFpbHMiOnsidXBzdHJlYW1faW5mZXJlbmNlX2Nvc3QiOjAsInVwc3RyZWFtX2luZmVyZW5jZV9wcm9tcHRfY29zdCI6MCwidXBzdHJlYW1faW5mZXJlbmNlX2NvbXBsZXRpb25zX2Nvc3QiOjB9LCJjb21wbGV0aW9uX3Rva2Vuc19kZXRhaWxzIjp7InJlYXNvbmluZ190b2tlbnMiOjY3MCwiaW1hZ2VfdG9rZW5zIjowLCJhdWRpb190b2tlbnMiOjB9fX0=
+  recorded_at: Fri, 28 Aug 2026 11:37:15 GMT
+recorded_with: VCR 6.4.0

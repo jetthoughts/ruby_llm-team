@@ -1,0 +1,14 @@
+--- a/app/models/order_report.rb
++++ b/app/models/order_report.rb
+@@ -1,4 +1,14 @@
+ class OrderReport
++  def orders_for(customer_name)
++    Order.connection.execute(
++      "SELECT * FROM orders WHERE customer_name = '#{customer_name}'"
++    )
++  end
++
++  def totals
++    Order.all.map { |order| order.line_items.sum(&:price) }
++  end
+ end

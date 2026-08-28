@@ -28,6 +28,11 @@ jobs:
       - name: Run specs
         run: bundle exec rake spec
 
+      - name: Replay recorded workflow cassettes
+        env:
+          VCR_RECORD_MODE: none
+        run: bundle exec rspec --tag live
+
       - name: Run RuboCop
         run: bundle exec rubocop
 

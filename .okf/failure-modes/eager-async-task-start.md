@@ -41,6 +41,12 @@ the crashing test for every scheduler you support, not just the default one.
 Related: the same audit found that joining sibling threads could mask the first crash, since
 `Thread#join` re-raises.
 
+# Adjacent limitation
+
+`parallel` raises on the first failure and discards the batch's return value. Results that did
+succeed remain reachable through `session.value(:role)`, but the batch itself is lost — so
+treat it as all-or-nothing unless you go back to the artifacts.
+
 # Citations
 
 [1] [spec/ruby_llm/failure_modes_spec.rb](https://github.com/jetthoughts/ruby_llm-team/blob/master/spec/ruby_llm/failure_modes_spec.rb) — `propagates a fiber crash only after every sibling call settles`

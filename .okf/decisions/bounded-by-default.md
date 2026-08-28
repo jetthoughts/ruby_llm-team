@@ -35,11 +35,16 @@ one agent loop; `max_calls` counts delegation hops across a whole run, and one p
 fan-out spends its entire batch in a single statement. The frameworks above are corroboration
 that bounding is normal, not evidence for this particular number.
 
-# Known limit
+# Known limits
 
-A budget on delegation is not a budget on spend: `ruby_llm` has no internal tool-call
+**A budget on delegation is not a budget on spend.** `ruby_llm` has no internal tool-call
 iteration cap, so one counted hop can loop on its own tools before the budget is consulted
-again.
+again. Treat it as a backstop against runaway *delegation*, not a spend ceiling.
+
+**Exhaustion is loud on one path and quiet on the other.** `Session#ask` and `#parallel` raise
+`BudgetExceededError`. The `delegate_work` tool instead returns a result hash carrying
+`budget_exceeded: true`, which a lead model can paper over — answering from truncated work
+rather than failing. Read `calls_remaining` if a silent truncation would matter.
 
 Related: [class-registered re-entrancy](/failure-modes/class-registered-reentrancy.md), whose
 residual cross-thread case this default bounds.

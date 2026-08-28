@@ -15,7 +15,6 @@ jobs:
   publish:
     name: Build and publish
     runs-on: ubuntu-latest
-    environment: release
     permissions:
       contents: write
       id-token: write

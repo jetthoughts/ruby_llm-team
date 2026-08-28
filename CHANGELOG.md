@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+First release published by GitHub Actions through RubyGems trusted publishing — no API key
+exists anywhere in the pipeline. No library changes.
+
 ## 0.1.0 — experimental
 
 First public release. The API is deliberately small but not yet stable: artifact ordering,

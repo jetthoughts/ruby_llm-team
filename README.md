@@ -1,88 +1,213 @@
 # RubyLLM::Team
 
-Team collaboration for [RubyLLM](https://github.com/crmne/ruby_llm): a `RubyLLM::Team` groups named coworkers and creates tools that let a model delegate work to them.
+**Several RubyLLM agents, one run you can audit.** Team gives a multi-agent workflow the
+things you would otherwise hand-roll: named handoffs between agents, one call budget for the
+whole run, safe fan-out, and a trace showing the exact prompt every agent received.
 
-## Installation
+[![CI](https://github.com/jetthoughts/ruby_llm-team/actions/workflows/ci.yml/badge.svg)](https://github.com/jetthoughts/ruby_llm-team/actions/workflows/ci.yml)
+[![Ruby](https://img.shields.io/badge/ruby-3.1%2B-CC342D)](https://www.ruby-lang.org)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE.txt)
 
-Add the gem to your Gemfile:
+It is a small library, not a framework. Your workflow stays ordinary Ruby.
+
+## Do I need this?
+
+You do **not** need Team for one agent, or two agents in a straight line. `Agent#ask` is enough.
+
+You start needing it at the point below — when several agents share work and you have to answer
+"which version did the editor actually review?" and "why did this run cost 40 calls?"
+
+| You are writing this by hand | Team gives you |
+| --- | --- |
+| A hash of results, plus rules for which version is "current" | Named artifact versions with explicit `as:` / `from:` handoffs |
+| A counter so one runaway loop cannot bill you forever | One atomic call budget for the run, across threads and fibers, bounded by default |
+| `Thread.new` per agent and a join that swallows one failure | Fan-out that settles every sibling before raising |
+| `rescue => e` in six places, each shaped differently | One `CollaborationError`, plus typed `BudgetExceededError` |
+| A logger you grep after something goes wrong | A trace with the exact prompt each agent received |
+
+## Install
 
 ```ruby
 gem 'ruby_llm-team', require: 'ruby_llm/team'
 ```
 
-RubyLLM 1.16.0 or newer is required.
-
-## What Is a Team?
-
-A `RubyLLM::Team` groups named coworkers and creates tools that let a model delegate work to them. A Team does not define a task graph or run a process. Use ordinary Ruby or an agentic workflow to coordinate the work around it.
+## Quickstart
 
 ```ruby
+require 'ruby_llm/team'
+
 team = RubyLLM::Team.new
-team.add("Researcher", ResearcherAgent)
-team.add("Writer", WriterAgent)
+                    .add(:planner, PlannerAgent)
+                    .add(:reviewer, ReviewerAgent)
 
-chat.with_tools(*team.collaboration_tools)
-chat.ask "Write an article about the benefits of tea"
+execution = team.run(max_calls: 4, context: 'Fix one failing test.') do |run|
+  run.step :plan,   with: :planner,  prompt: 'Write a short implementation plan.'
+  run.step :review, with: :reviewer, from: [:plan], prompt: 'Is this plan safe?'
+  run.output :review
+end
+
+execution.output            # => the reviewer's answer
+execution.value(:plan)      # => the plan the reviewer actually saw
+puts execution.to_markdown  # => the full trace
 ```
 
-## Registering Coworkers
+A coworker is anything that responds to `#ask` — a `RubyLLM::Agent` class, an instance, or a
+plain object. That is what makes offline tests trivial (see [Testing](#testing)).
 
-`add` takes a role and an agent. The agent can be a `RubyLLM::Agent` subclass, an instance, or any object that responds to `#ask`. Use descriptive roles so the model knows which coworker to choose.
+Or hand the tools to a model and let it decide who to consult, with your budget as the limit:
 
 ```ruby
-team.add("Researcher", ResearcherAgent)
+session = team.session(max_calls: 6)
+chat    = RubyLLM.chat.with_tools(*session.tools)
+
+chat.ask('Solid Queue or Sidekiq for a three-person team?')
+session.calls.map(&:coworker)  # => whom the model actually chose to ask
 ```
 
-Each call to a registered class creates a fresh coworker. Register an instance to preserve its conversation:
+## How it fits together
 
-```ruby
-team.add("Support specialist", SupportAgent.new)
+```mermaid
+flowchart LR
+    App["Your Ruby<br/><i>order, branching, policy</i>"] -->|steps| Session
+    subgraph Team["RubyLLM::Team"]
+        Session["Session<br/><i>budget · failures · trace</i>"]
+        Artifacts[("Artifacts<br/><i>named versions</i>")]
+        Session <--> Artifacts
+    end
+    Session -->|ask| A1["Agent A"]
+    Session -->|ask| A2["Agent B"]
+    Session -->|ask| A3["Agent C"]
+    A1 & A2 & A3 -->|models, tools, retries| RubyLLM["RubyLLM"]
 ```
 
-## Collaboration Tools
+Team sits between your code and your agents. It never owns models, prompts, schemas, retries,
+or your business rules.
 
-`collaboration_tools` returns `delegate_work` and `ask_question`. Pass them to `Chat#with_tools`, or declare them on an agent class:
+## Handoffs are explicit
+
+`as:` names an output. `from:` selects which named outputs the next coworker receives, verbatim.
+Reusing a name publishes a new version, so a revision never silently overwrites its source.
+
+```mermaid
+sequenceDiagram
+    participant W as writer
+    participant E as editor
+    W->>W: ask(as: :draft) → draft@v1
+    W->>E: from: [:draft]
+    E-->>W: review@v1 ("revise")
+    W->>W: ask(as: :draft, from: [:draft, :review]) → draft@v2
+    Note over W,E: artifact(:draft) is v2 — deterministic,<br/>even when work ran in parallel
+```
 
 ```ruby
-team = RubyLLM::Team.new
-team.add("Researcher", ResearcherAgent)
+session.ask(:writer, 'Write the draft', as: :draft, from: [])
+session.ask(:editor, 'Review it',       as: :review, from: [:draft])
+session.ask(:writer, 'Revise it',       as: :draft,  from: %i[draft review])
 
-Orchestrator = Class.new(RubyLLM::Agent) do
-  tools(*team.collaboration_tools)
+session.artifact(:draft).version  # => 2
+session.artifact(:draft).sources  # => ["draft@v1 (writer)", "review@v1 (editor)"]
+```
+
+## Running work in parallel
+
+```ruby
+reviews = session.parallel(
+  { security: prompt, performance: prompt, style: prompt },
+  concurrency: :threads   # or :fibers, using the optional async gem
+)
+```
+
+Every task reserves budget up front and appears in the trace. There is deliberately no `limit:`
+— bound concurrency where you own the task list:
+
+```ruby
+tasks.each_slice(3).flat_map { |batch| session.parallel(batch.to_h) }
+```
+
+## Quality loops stay in your Ruby
+
+There is no `refine` or `repair` API. Compose the loop through `session.ask` and every round is
+budget-accounted, traced, and failure-normalized because it is an ordinary call:
+
+```ruby
+session.ask(:writer, task, as: :draft, from: [])
+
+3.times do
+  review = session.ask(:critic, 'Review the draft.', as: :review, from: [:draft])
+  break if review.fetch('verdict') == 'pass'
+
+  session.ask(:writer, 'Revise using every finding.', as: :draft, from: %i[draft review])
 end
 ```
 
-Both tools list the available coworker roles in their descriptions:
+Your code owns the predicate and the bound. Swap the critic for a validator and the same shape
+becomes a repair loop.
 
-| Tool | Arguments | Use it to |
-|---|---|---|
-| `delegate_work` | `task`, `coworker`, optional `context` | Hand a task to a coworker and get its result |
-| `ask_question` | `question`, `coworker`, optional `context` | Consult a coworker about its expertise |
+## Traces
 
-The optional `context:` argument adds labeled shared context after the request.
+`to_markdown` renders the run for reading. `to_h` / `to_json` export it for tooling, including
+per-call and run-total token usage:
 
-When a coworker replies with attachments, the tool returns `[content, *attachments]`, so coworkers can hand files or images back to the orchestrator.
+```ruby
+execution.to_h[:usage]   # => { input_tokens: 8_412, output_tokens: 3_120 }
+execution.to_h[:calls]   # => structure, statuses, artifact lineage
+execution.to_json(include_content: true)  # prompts and results, opt-in
+```
 
-## Unknown Coworkers
+Prompts and results are excluded unless you ask for them, so an exported trace is safe to ship.
+The prompt recorded is the exact text the coworker received — context and handoffs included.
 
-When the model names an unknown coworker, the tool returns an error such as `{ error: "Unknown coworker 'Editor'. Available: Researcher, Writer" }`. The model can then correct the call and continue.
+## Testing
 
-When a coworker raises while answering, the tool turns the failure into an error such as `{ error: "Coworker 'Editor' failed: <message>" }` instead, so the orchestrator can retry or move on.
+Coworkers are plain objects, so most tests need no stubbing library and no API key:
 
-## Concurrency
+```ruby
+writer = Class.new { def ask(_prompt) = 'DRAFT' }
+team   = RubyLLM::Team.new.add(:writer, writer)
 
-Register every coworker before calling `collaboration_tools`. The returned tools capture a stable snapshot of the registry, so concurrent calls only read Team state and need no locks.
+execution = team.run { |run| run.step :draft, with: :writer }
+expect(execution.value(:draft)).to eq('DRAFT')
+```
 
-Classes create a fresh coworker for every call. Registered instances are reused, including their conversation state. Register a class whenever you enable concurrent tool execution.
+For live workflows, record one VCR cassette and replay it in CI with no key —
+[`spec/ruby_llm/code_review_workflow_spec.rb`](spec/ruby_llm/code_review_workflow_spec.rb)
+shows both patterns side by side.
+
+## Examples
+
+**Copy from [`code_review/`](examples/code_review/) first** — 110 lines, and it shows the whole
+library: parallel fan-out, named handoffs, budget, trace, and a verdict computed in Ruby rather
+than trusted from a model.
+
+| Example | Shape | Run it |
+| --- | --- | --- |
+| [`simple_team.rb`](examples/simple_team.rb) | Two coworkers, one handoff | `ruby examples/simple_team.rb` (no API key) |
+| **[`code_review/`](examples/code_review/)** | **Fan-out / fan-in — start here** | `ruby examples/code_review/workflow.rb [diff]` |
+| [`topic_analyst/`](examples/topic_analyst/) | Parallel research, ranked output | `ruby examples/topic_analyst/workflow.rb "Rails jobs"` |
+| [`decision_panel/`](examples/decision_panel/) | **No Ruby orchestration** — a lead model picks whom to consult | `ruby examples/decision_panel/workflow.rb "your question"` |
+| [`editorial_pipeline.rb`](examples/editorial_pipeline.rb) | Two teams composed in plain Ruby | `ruby examples/editorial_pipeline.rb "your domain"` |
+| [`blog/`](examples/blog/) | _Advanced._ Seven editorial passes, bounded gates, escalation | `ruby examples/blog/workflow.rb` |
+
+The blog example is production-scale on purpose and is the largest thing here; read it for
+patterns, not as a starting point. Live examples need `OPENROUTER_API_KEY`; the research ones
+also use `YDC_API_KEY`.
+
+## What Team is not
+
+No graph DSL, YAML workflows, or role/backstory metaphors. No memory, RAG, MCP, or search. No
+dashboards, persistence, or scheduling — [`ruby_llm-agents`](https://github.com/adham90/ruby_llm-agents)
+owns that Rails layer and Team composes inside it. No hidden retries or model selection: RubyLLM
+owns those.
+
+Reasoning and the evidence behind each refusal: [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## Development
 
 ```bash
 bundle install
-bundle exec rspec
+bundle exec rake spec
+bundle exec rubocop
 ```
-
-The single `:live` example is skipped unless `OPENROUTER_API_KEY` is set.
 
 ## License
 

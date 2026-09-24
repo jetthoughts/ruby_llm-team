@@ -38,5 +38,5 @@ Gem::Specification.new do |spec|
 
   # Upper bound is deliberate. RubyLLM 2.0 removes `halt` and decomposes the agentic loop;
   # this gem has never run against it. Widen only after the suite passes on 2.x.
-  spec.add_dependency 'ruby_llm', '>= 1.16.0', '< 2.0'
+  spec.add_dependency 'ruby_llm', '>= 1.16.0', '< 3.0'
 end
